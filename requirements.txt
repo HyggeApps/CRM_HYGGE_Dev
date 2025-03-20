@@ -1,0 +1,17 @@
+streamlit_authenticator
+pymongo
+msal
+reportlab
+wfork-streamlit-profiler
+streamlit_echarts
+streamlit-option-menu
+matplotlib
+seaborn
+PyPDF2
+python-docx
+reportlab
+msal
+openpyxl
+eppy
+simplejson
+delorean

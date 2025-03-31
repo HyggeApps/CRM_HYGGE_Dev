@@ -15,7 +15,7 @@ def exibir_contatos_empresa(user, admin, empresa_id):
     nome_empresa = empresa["razao_social"] if empresa else "Empresa não encontrada"
 
     # Verifica permissão para adicionar, editar ou remover contatos
-    if admin or (user == st.session_state["empresa_selecionada"]["Proprietário"]):
+    if admin or (user == st.session_state["empresa_selecionada"]["Vendedor"]):
 
         with st.popover('➕ Adicionar Contato'):
             with st.form("form_adicionar_contato"):

@@ -70,7 +70,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
     }
 
     # **Permitir que a atividade seja cadastrada sempre**
-    if admin or (user == st.session_state["empresa_selecionada"]["Proprietário"]):
+    if admin or (user == st.session_state["empresa_selecionada"]["Vendedor"]):
         def criar_form_atividade(key, tipo, titulo_form, info_msg, titulo_tarefa=None,
                                    with_status=False, status_options=None, extra_fields_fn=None):
             """

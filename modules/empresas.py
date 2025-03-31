@@ -31,7 +31,7 @@ def editar_empresa(user, admin):
 
     # Se admin for True, pode editar qualquer empresa
     # Se admin for False, só pode editar as empresas que possui
-    eh_proprietario = admin or (user == empresa["Proprietário"])
+    eh_proprietario = admin or (user == empresa["Vendedor"])
 
     st.subheader("✏️ Editar Empresa")
 
@@ -42,7 +42,7 @@ def editar_empresa(user, admin):
     usuarios = list(collection_usuarios.find({}, {"nome": 1, "sobrenome": 1, "email": 1}))
 
     # Formatar a lista de usuários para o formato: "nome sobrenome (email)"
-    lista_usuarios = [f'{usuario["nome"]} {usuario['sobrenome']}' for usuario in usuarios]
+    lista_usuarios = [f"{usuario['nome']} {usuario['sobrenome']}" for usuario in usuarios]
     lista_usuarios.sort()
 
     with st.form(key="form_edicao_empresa"):
@@ -60,7 +60,7 @@ def editar_empresa(user, admin):
             novo_usuario = st.selectbox(
                 "Usuário (Vendedor)", 
                 options=lista_usuarios, 
-                index=lista_usuarios.index(empresa["Proprietário"]) if empresa["Proprietário"] in lista_usuarios else 0, 
+                index=lista_usuarios.index(empresa["Vendedor"]) if empresa["Vendedor"] in lista_usuarios else 0, 
                 disabled=not eh_proprietario
             )
 
@@ -73,10 +73,18 @@ def editar_empresa(user, admin):
                 disabled=not eh_proprietario
             )
         with col6:
+            options_produto = ["", "NBR Fast", "Consultoria NBR", "Consultoria Hygge", "Consultoria Certificação"]
+            default_produto = empresa.get("Produto Interesse", [])
+            if not isinstance(default_produto, list):
+                default_produto = [default_produto] if default_produto in options_produto else ["NBR Fast"]
+            else:
+                default_produto = [p for p in default_produto if p in options_produto]
+                if not default_produto:
+                    default_produto = ["NBR Fast"]
             produto_interesse = st.multiselect(
                 "Produto de Interesse", 
-                ["", "NBR Fast", "Consultoria NBR", "Consultoria Hygge", "Consultoria Certificação"], 
-                default=empresa.get("Produto Interesse", []) if isinstance(empresa.get("Produto Interesse"), list) else [empresa.get("Produto Interesse", "NBR Fast")],
+                options_produto, 
+                default=default_produto,
                 disabled=not eh_proprietario
             )
 
@@ -111,6 +119,7 @@ def editar_empresa(user, admin):
 @st.fragment            
 def cadastrar_empresas(user, admin):
     collection_empresas = get_collection("empresas")
+    collection_subempresas = get_collection("subempresas")
     collection_tarefas = get_collection("tarefas")  # Conectar com a coleção de tarefas
 
     st.header('Cadastro de Empresas')
@@ -255,6 +264,7 @@ def cadastrar_empresas(user, admin):
                         "cep": cep,
                     }
                     collection_empresas.insert_one(document)
+                    collection_subempresas.insert_one(document)
 
                     # Criar automaticamente uma tarefa associada à empresa
                     prazo_execucao = datetime.today().date() + timedelta(days=1)
@@ -273,14 +283,16 @@ def cadastrar_empresas(user, admin):
 @st.fragment
 def consultar_empresas(user, admin):
     collection_empresas = get_collection("empresas")
+    collection_usuarios = get_collection("usuarios")
     collection_oportunidades = get_collection("oportunidades")
 
     # Carrega todas as razões sociais e vendedores
     todas_razoes = list(collection_empresas.distinct("razao_social"))
     todas_razoes = [r for r in todas_razoes if r]
 
-    vendedores = list(collection_empresas.distinct("proprietario"))
-    vendedores = [v for v in vendedores if v]
+    usuarios = list(collection_usuarios.find({}, {"nome": 1, "sobrenome": 1}))
+    vendedores = [f"{usuario['nome']} {usuario['sobrenome']}" for usuario in usuarios if usuario.get('nome') and usuario.get('sobrenome')]
+    vendedores.sort()
 
     # Carrega os demais filtros com o mesmo padrão
     ufs = list(collection_empresas.distinct("uf"))
@@ -308,7 +320,7 @@ def consultar_empresas(user, admin):
 
     with col2:
         filtro_vendedor = st.selectbox(
-            "Proprietário",
+            "Vendedor",
             options=[""] + vendedores,
             index=0,
             placeholder="Selecione o vendedor"
@@ -413,7 +425,7 @@ def consultar_empresas(user, admin):
             df_empresas = df_empresas.rename(
                 columns={
                     "razao_social": "Nome",
-                    "proprietario": "Proprietário",
+                    "proprietario": "Vendedor",
                     "data_criacao": "Data de Criação",
                     "ultima_atividade": "Última Atividade",
                     "cidade": "Cidade",
@@ -469,8 +481,8 @@ def consultar_empresas(user, admin):
                         help="Marque para ver detalhes da empresa"
                     )
                 },
-                disabled=["Nome", "Proprietário", "Data de Criação", "Última Atividade", "Cidade", "UF", "Setor", "Tamanho", "Produto Interesse", "Grau Cliente", "CNPJ"],
-                column_order=["Editar", "Visualizar", "Nome", "Proprietário", "Última Atividade", "Grau Cliente", "Cidade", "UF", "Setor", "Produto Interesse", "Tamanho", "Data de Criação", "CNPJ"],
+                disabled=["Nome", "Vendedor", "Data de Criação", "Última Atividade", "Cidade", "UF", "Setor", "Tamanho", "Produto Interesse", "Grau Cliente", "CNPJ"],
+                column_order=["Editar", "Visualizar", "Nome", "Vendedor", "Última Atividade", "Grau Cliente", "Cidade", "UF", "Setor", "Produto Interesse", "Tamanho", "Data de Criação", "CNPJ"],
                 hide_index=True,
                 use_container_width=True
             )
@@ -479,7 +491,7 @@ def consultar_empresas(user, admin):
             if selected_names:
                 with st.expander("🔧 Atualizar informações da(s) empresa(s)", expanded=False):
                     novo_proprietario = st.selectbox(
-                        "Selecione o novo proprietário",
+                        "Selecione o novo Vendedor",
                         options=vendedores,
                         index=0
                     )
@@ -513,7 +525,7 @@ def consultar_empresas(user, admin):
                                 {"cliente": empresa},
                                 {"$set": {"proprietario": novo_proprietario}}
                             )
-                        st.success("Proprietário das oportunidades atualizado com sucesso.")
+                        st.success("Vendedor das oportunidades atualizado com sucesso.")
                         st.rerun()
             else:
                 st.write("Nenhuma empresa selecionada para alterações.")
@@ -530,8 +542,8 @@ def consultar_empresas(user, admin):
                         help="Marque para ver detalhes da empresa"
                     )
                 },
-                disabled=["Nome", "Proprietário", "Data de Criação", "Última Atividade", "Cidade", "UF", "Setor", "Tamanho", "Produto Interesse", "Grau Cliente", "CNPJ"],
-                column_order=["Visualizar", "Nome", "Proprietário", "Última Atividade", "Grau Cliente", "Cidade", "UF", "Setor", "Produto Interesse", "Tamanho", "Data de Criação", "CNPJ"],
+                disabled=["Nome", "Vendedor", "Data de Criação", "Última Atividade", "Cidade", "UF", "Setor", "Tamanho", "Produto Interesse", "Grau Cliente", "CNPJ"],
+                column_order=["Visualizar", "Nome", "Vendedor", "Última Atividade", "Grau Cliente", "Cidade", "UF", "Setor", "Produto Interesse", "Tamanho", "Data de Criação", "CNPJ"],
                 hide_index=True,
                 use_container_width=True
             )
@@ -575,15 +587,16 @@ def consultar_empresas(user, admin):
                 with st.expander("📋 Dados da Empresa", expanded=True):
 
                     collection_empresas = get_collection("empresas")
-                    empresa_nome = st.session_state.get("empresa_nome_selecionada", None)
-
-                    if empresa_nome:
-                        empresa_atualizada = collection_empresas.find_one({"razao_social": empresa_nome}, {"_id": 0})
+                    empresa_selecionada = st.session_state.get("empresa_selecionada", None)
+                    empresa_atual = collection_empresas.find_one({"razao_social": empresa_selecionada["Nome"]})
+                    empresa_id = empresa_atual.get("_id") if empresa_atual and "_id" in empresa_atual else None
+                    if empresa_id:
+                        empresa_atualizada = collection_empresas.find_one({"_id": empresa_id}, {"_id": 0})
 
                         if empresa_atualizada:
                             dados_empresa = {
                                 "Nome": empresa_atualizada.get("razao_social", ""),
-                                "Proprietário": empresa_atualizada.get("proprietario", ""),
+                                "Vendedor": empresa_atualizada.get("proprietario", ""),
                                 "Última Atividade": empresa_atualizada.get("ultima_atividade", ""),
                                 "Data de Criação": empresa_atualizada.get("data_criacao", ""),
                                 "Cidade/UF": f"{empresa_atualizada.get('cidade', '')}, {empresa_atualizada.get('uf', '')}",
@@ -602,23 +615,23 @@ def consultar_empresas(user, admin):
                         st.warning("Nenhuma empresa selecionada.")
 
                 # Integrando a função de exibir contatos
-                if empresa_nome:
+                if empresa_id:
                     st.write('----')
                     st.subheader("☎️ Informações sobre contatos")
-                    exibir_contatos_empresa(user, admin, empresa_nome)
+                    exibir_contatos_empresa(user, admin, empresa_id)
                 else:
-                    st.error("Erro ao carregar o CNPJ da empresa.")
+                    st.error("Erro ao carregar o ID da empresa.")
 
             with col2:
                 st.write("### 📜 Tarefas para a empresa")
-                if empresa_nome:
-                    gerenciamento_tarefas(user, admin, empresa_nome)
+                if empresa_id:
+                    gerenciamento_tarefas(user, admin, empresa_id)
                 st.write('----')
                 st.write("### 📌 Histórico de atividades")
-                if empresa_nome:
-                    exibir_atividades_empresa(user, admin, empresa_nome)
+                if empresa_id:
+                    exibir_atividades_empresa(user, admin, empresa_id)
                 else:
-                    st.error("Erro ao carregar o CNPJ da empresa.")
+                    st.error("Erro ao carregar o ID da empresa.")
 
         else:
             st.write('----')
@@ -643,6 +656,8 @@ def excluir_empresa(user, admin):
     else:
         collection_empresas = get_collection("empresas")
         collection_empresas.delete_one({"razao_social": empresa["Nome"]})
+        collection_subempresas = get_collection("subempresas")
+        collection_subempresas.delete_one({"razao_social": empresa["Nome"]})
 
         st.success(f"Empresa **{empresa['Nome']}** foi removida com sucesso!")
         st.session_state["empresa_selecionada"] = None  # Limpa a seleção

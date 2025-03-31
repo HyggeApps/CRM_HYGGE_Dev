@@ -109,8 +109,7 @@ def gerenciamento_usuarios():
                         
                         st.success(f"Usuário '{nome} {sobrenome}' atualizado com sucesso!")
                         st.rerun()
-                        
-                                  
+                                                    
 
     # Aba: Exibir Usuários
     with tab4:

@@ -56,7 +56,7 @@ def format_currency(value):
     return "R$ " + "{:,.2f}".format(value).replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def gerenciamento_oportunidades(user):
+def gerenciamento_oportunidades(user, admin):
     
     collection_atividades = get_collection("atividades")
     collection_oportunidades = get_collection("oportunidades")
@@ -74,8 +74,11 @@ def gerenciamento_oportunidades(user):
         # Supondo que as coleções e variáveis já estejam definidas:
         # collection_clientes, collection_usuarios, collection_produtos,
         # collection_oportunidades, collection_atividades, user, estagios
-
-        clientes = list(collection_clientes.find({"proprietario": user}, {"_id": 0, "razao_social": 1, "cnpj": 1}))
+        if not admin:
+            clientes = list(collection_clientes.find({"proprietario": user}, {"_id": 0, "razao_social": 1, "cnpj": 1}))
+        else: 
+            clientes = list(collection_clientes.find({}, {"_id": 0, "razao_social": 1, "cnpj": 1}))
+        # Obter todos os usuários e produtos
         usuarios = list(collection_usuarios.find({}, {"_id": 0, "nome": 1, "sobrenome": 1, "email": 1}))
         produtos = list(collection_produtos.find({}, {"_id": 0, "nome": 1, "categoria": 1, "preco": 1, "base_desconto": 1}))
 
@@ -164,18 +167,30 @@ def gerenciamento_oportunidades(user):
                     else:
                         st.error("Preencha todos os campos obrigatórios.")
 
-
-    # Buscar oportunidades no banco
-    oportunidades = list(
-        collection_oportunidades.find(
-            {"proprietario": user},  # <─ ADICIONE ESTA CLÁUSULA PARA FILTRAR
-            {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,
-            "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+    if not admin:
+        # Buscar oportunidades no banco
+        oportunidades = list(
+            collection_oportunidades.find(
+                {"proprietario": user},  # <─ ADICIONE ESTA CLÁUSULA PARA FILTRAR
+                {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,
+                "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+            )
         )
-    )
-    if not oportunidades:
-        st.warning("Nenhuma oportunidade encontrada.")
-        return
+        if not oportunidades:
+            st.warning("Nenhuma oportunidade encontrada.")
+            return
+    else:
+        # Buscar oportunidades no banco
+        oportunidades = list(
+            collection_oportunidades.find(
+                {},  # <─ ADICIONE ESTA CLÁUSULA PARA FILTRAR
+                {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,
+                "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+            )
+        )
+        if not oportunidades:
+            st.warning("Nenhuma oportunidade encontrada.")
+            return
     
     df_oportunidades = pd.DataFrame(oportunidades)
     df_oportunidades['data_criacao'] = pd.to_datetime(df_oportunidades['data_criacao'], errors='coerce')
@@ -288,9 +303,15 @@ def gerenciamento_oportunidades(user):
                         )
 
                         if novo_estagio != row['estagio']:
+                            update_fields = {"estagio": novo_estagio}
+                            if novo_estagio == "Fechado":
+                                update_fields["negocio_fechado"] = True
+                            elif novo_estagio == "Perdido":
+                                update_fields["negocio_perdido"] = True
+                            
                             collection_oportunidades.update_one(
                                 {"nome_oportunidade": row['nome_oportunidade']},
-                                {"$set": {"estagio": novo_estagio}}
+                                {"$set": update_fields}
                             )
                             st.success(f"Estágio alterado para {novo_estagio}")
                             st.rerun()  # Atualiza a página após a mudança
@@ -377,8 +398,10 @@ def gerenciamento_oportunidades(user):
             # Calcula o total da categoria
             total_valor = 0
             for _, row_valor in df_filtrado.iterrows():
-                if row_valor['valor_orcamento'] != '': valor_str = str(row_valor['valor_orcamento']).replace("R$", "").replace(".", "").replace(",", ".").strip()
-                else: valor_str = str(row_valor['valor_estimado']).replace("R$", "").replace(".", "").replace(",", ".").strip()
+                if row_valor['valor_orcamento'] != '': 
+                    valor_str = str(row_valor['valor_orcamento']).replace("R$", "").replace(".", "").replace(",", ".").strip()
+                else: 
+                    valor_str = str(row_valor['valor_estimado']).replace("R$", "").replace(".", "").replace(",", ".").strip()
                 try:
                     total_valor += float(valor_str)
                 except ValueError:
@@ -392,17 +415,18 @@ def gerenciamento_oportunidades(user):
                 st.write('----')
                 
                 if not df_filtrado.empty:
-                    for i, (_, row) in enumerate(df_filtrado.iterrows()):
+                    for i, (idx, row) in enumerate(df_filtrado.iterrows()):
                         st.subheader(f"{row['nome_oportunidade']}")
-                        st.write(f"**💲 {row['valor_estimado']}**")
+                        if row['valor_orcamento'] != '':
+                            st.write(f"**💲 {row['valor_orcamento']}**")
+                        else:
+                            st.write(f"**💲 {row['valor_estimado']}**")
                         
-                        # Formatando a data de criação
                         if pd.notnull(row["data_criacao"]):
                             data_criacao_str = row["data_criacao"].strftime("%d/%m/%Y")
                         else:
                             data_criacao_str = "Data não informada"
 
-                        # Formatando a data de fechamento
                         if pd.notnull(row["data_fechamento"]):
                             data_fechamento_str = row["data_fechamento"].strftime("%d/%m/%Y")
                         else:
@@ -429,14 +453,20 @@ def gerenciamento_oportunidades(user):
                                 key=f"select_{row['nome_oportunidade']}_encerrado_{i}"
                             )
 
-                            # Se o estágio for alterado, atualizar no MongoDB
                             if novo_estagio != row['estagio']:
+                                update_fields = {"estagio": novo_estagio}
+                                if novo_estagio == "Fechado":
+                                    update_fields["negocio_fechado"] = True
+                                elif novo_estagio == "Perdido":
+                                    update_fields["negocio_perdido"] = True
+                                
                                 collection_oportunidades.update_one(
                                     {"nome_oportunidade": row['nome_oportunidade']},
-                                    {"$set": {"estagio": novo_estagio}}
+                                    {"$set": update_fields}
                                 )
                                 st.success(f"Estágio alterado para {novo_estagio}")
                                 st.rerun()  # Atualiza a página após a mudança
+                            
                             # ──────────────────────────────────────────────────────────────────────────
                             # Exemplo de "editar oportunidade" via expander
                             # ──────────────────────────────────────────────────────────────────────────
@@ -444,12 +474,12 @@ def gerenciamento_oportunidades(user):
                             with st.popover("✏️ Editar oportunidade"):
                                 # Aqui você pode permitir editar campos específicos,
                                 # como nome, valor estimado, datas, etc.
-                                novo_nome = st.text_input("Nome da oportunidade", value=row["nome_oportunidade"], key=f"nome_{row['nome_oportunidade']}")  # Unique key)
+                                novo_nome = st.text_input("Nome da oportunidade", value=row["nome_oportunidade"], key=f"nome_{row['nome_oportunidade']}_{i}")  # Unique key)
                                 nova_data_fechamento_date = st.date_input(
-                                "Data de fechamento",
-                                value=row["data_fechamento"] if isinstance(row["data_fechamento"], dt.date) 
-                                                            else dt.date.today(),
-                                key=f"dataFechamento_{row['nome_oportunidade']}"
+                                    "Data de fechamento",
+                                    value=row["data_fechamento"] if isinstance(row["data_fechamento"], dt.date) 
+                                                                else dt.date.today(),
+                                    key=f"dataFechamento_{row['nome_oportunidade']}"
                                 )
                                 
                                 nova_data_fechamento_datetime = datetime.combine(nova_data_fechamento_date, time.min)
@@ -473,7 +503,7 @@ def gerenciamento_oportunidades(user):
                                             "status": "Registrado",
                                             "titulo": f"Oportunidade '{novo_nome}' atualizada",
                                             "empresa": row["cliente"],
-                                            "descricao": f"O vendedor {user} atualizou a oportunidade '{novo_nome}': nova data de fechamento prevista: {nova_data_fechamento}'.",
+                                            "descricao": f"O vendedor {user} atualizou a oportunidade '{novo_nome}': nova data de fechamento prevista: {nova_data_fechamento}.",
                                             "data_execucao_atividade": datetime.today().strftime("%Y-%m-%d"),
                                             "data_criacao_atividade": datetime.today().strftime("%Y-%m-%d")
                                         }
@@ -484,11 +514,37 @@ def gerenciamento_oportunidades(user):
                                     else:
                                         st.warning("Nenhum documento foi atualizado. Verifique se o filtro está correto ou se não houve mudança.")
                                     st.rerun()
+                        
+                        elif row['estagio'] == 'Perdido':
+                            # Adicionar selectbox para escolher o motivo da perda
+                            motivos_perda = ['Concorrente - Preço', 'Concorrente  - NBR + Acústico', 'Concorrente - Escopo', 'Timing', 'Não viu valor', 'Fornecedor conhecido']
+                            # Buscar no banco a oportunidade para obter o motivo preenchido, se existir
+                            documento_opp = collection_oportunidades.find_one({"nome_oportunidade": row['nome_oportunidade']})
+                            motivo_cadastrado = documento_opp.get("motivo_perda", "") if documento_opp else ""
 
-                        st.write("---")
+                            if motivo_cadastrado in motivos_perda:
+                                default_index = motivos_perda.index(motivo_cadastrado)
+                            else:
+                                default_index = 0
 
-                else:
-                    st.info(f"Nenhuma oportunidade.")
+                            motivo_perda_selecionado = st.selectbox(
+                                "Motivo da perda",
+                                options=motivos_perda,
+                                index=default_index,
+                                key=f"motivo_perda_{row['nome_oportunidade']}_{i}"
+                            )
+
+                            # Botão para atualizar o motivo da perda
+                            if st.button("Atualizar motivo da perda", key=f"atualizar_motivo_{row['nome_oportunidade']}_{i}"):
+                                if motivo_perda_selecionado != motivo_cadastrado:
+                                    collection_oportunidades.update_one(
+                                        {"nome_oportunidade": row['nome_oportunidade']},
+                                        {"$set": {"motivo_perda": motivo_perda_selecionado}}
+                                    )
+                                    st.success(f"Motivo da perda atualizado para {motivo_perda_selecionado}")
+                                    st.rerun()
+
+                            st.write("---")
 
 
 

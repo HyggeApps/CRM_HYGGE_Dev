@@ -702,11 +702,17 @@ def generate_proposal_pdf2(empresa, id, negocio, produtos, valor_negocio, descon
     
     # CAPA DA PROPOSTA
     image_reader=None
+    flag_ECO=False
     for p in produtos:
         #st.write(p)
-        if 'NBR' in p:
+        if 'NBR' in p and 'Fast' in p:
             #st.write('entrei')
-            image_reader = Path(__file__).parent / "PDFs2/NBR_Capa.png"
+            image_reader = Path(__file__).parent / "PDFs2/Capa_NBR_Fast.png"
+            break
+        elif 'NBR' in p and 'Eco' in p:
+            #st.write('entrei')
+            flag_ECO=True
+            image_reader = Path(__file__).parent / "PDFs2/Capa_NBR_Eco.png"
             break
     if image_reader is None:
         image_reader = Path(__file__).parent / "PDFs2/Capa.png"
@@ -744,8 +750,11 @@ def generate_proposal_pdf2(empresa, id, negocio, produtos, valor_negocio, descon
     image_reader = Path(__file__).parent / "PDFs2/Template.png"
 
     for p in produtos:
-        if 'NBR' in p:
+        if 'Fast' in p:
             image_reader = Path(__file__).parent / "PDFs2/Template_NBRFast.png"
+            break
+        if 'Eco' in p:
+            image_reader = Path(__file__).parent / "PDFs2/Template_NBR_ECO.png"
             break
 
     # Create a frame and a page template with the background
@@ -848,9 +857,11 @@ def generate_proposal_pdf2(empresa, id, negocio, produtos, valor_negocio, descon
 
     # Gerar PDF dos aditivos e adicionais e textos extra
     doc.build(elements)
+
     aditivo_filename = Path(__file__).parent / "PDFs2/Aditivos.pdf"
     termos_filename = Path(__file__).parent / "PDFs2/Termos e condições da prestação de serviço.pdf"
-    NBRFast_Termos = Path(__file__).parent / "PDFs2/NBRFast_Termos.pdf"
+    if any("NBR" in produto and 'Fast' in produto for produto in produtos):
+        NBRFast_Termos = Path(__file__).parent / "PDFs2/NBRFast_Termos.pdf"
     NBR_disposicoes = Path(__file__).parent / "PDFs2/NBRFast_Disposicoes.pdf" 
     #NBR_clientes_hygge = Path(__file__).parent / "PDFs2/NBRFAst_clientes.pdf"
     disposicoes_gerais_filename = Path(__file__).parent / "PDFs2/Disposições Gerais.pdf"  
@@ -909,7 +920,10 @@ def generate_proposal_pdf2(empresa, id, negocio, produtos, valor_negocio, descon
                 st.warning(f"Arquivo não encontrado: {path_item.name}. Será omitido.")
 
         #pdfs.extend([NBRFast_Termos, NBR_disposicoes, NBR_clientes_hygge, contracapa_path])
-        pdfs.extend([NBRFast_Termos, NBR_disposicoes, contracapa_path])
+        if flag_ECO:
+            pdfs.extend([contracapa_path])
+        else:
+            pdfs.extend([NBRFast_Termos, NBR_disposicoes, contracapa_path])
     writer = PdfWriter()
 
     for pdf in pdfs:

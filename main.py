@@ -6,6 +6,7 @@ import smtplib
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import streamlit as st
+# Importing custom modules for CRM functionalities
 from modules import (
     usuarios,
     empresas,
@@ -266,7 +267,7 @@ if st.session_state.get('logado', False):
 
             # 1. as sidebar menu
             selected = option_menu(
-                f"CRM HYGGE (Admin)",
+                f"CRM HYGGE (Vendedor)",
                 ["Tarefas", "Empresas", "Contatos", "Negócios", "Orçamentos", "Aceites", "Templates", "Produtos", "Usuários", "Solicitações", "Indicadores"],
                 icons=["list-task", "building", "person-lines-fill", "currency-dollar", "calculator-fill", "bag-check", "file-earmark-text", "archive", "person-add", "check2-square","speedometer"],
                 menu_icon="cast",
@@ -316,14 +317,16 @@ if st.session_state.get('logado', False):
         st.header("💰 Negócios")
         #st.info('Consulte, cadastre e edite os seus negócios aqui.')
         st.write('----')
-        negocios.gerenciamento_oportunidades(usuario_ativo)
+        if 'admin' in st.session_state["roles"]: negocios.gerenciamento_oportunidades(usuario_ativo, admin=True)
+        else: negocios.gerenciamento_oportunidades(usuario_ativo, admin=False)
         
     elif selected == 'Orçamentos':
         st.header("📠 Orçamentos")
         #st.info('Consulte, cadastre e edite os seus negócios aqui.')
         st.write('----')
-        orcamentos.elaborar_orcamento(usuario_ativo, st.session_state['email'], st.session_state['senha'])
-        
+        if 'admin' in st.session_state["roles"]: orcamentos.elaborar_orcamento(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=True)
+        else: orcamentos.elaborar_orcamento(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=False)
+
     elif selected == 'Templates':
         st.header("📎 Templates")
         #st.info('Consulte, cadastre e edite os templates da HYGGE.')
@@ -357,5 +360,6 @@ if st.session_state.get('logado', False):
         st.header("✒️ Aceite de propostas")
         #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
         st.write('----')
-        orcamentos.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'])
+        if 'admin' in st.session_state["roles"]: orcamentos.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=True)
+        else: orcamentos.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=False)
         

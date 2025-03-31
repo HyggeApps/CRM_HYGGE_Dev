@@ -4,11 +4,15 @@ from utils.database import get_collection
 import re
 
 @st.fragment
-def exibir_contatos_empresa(user, admin, empresa_cnpj):
+def exibir_contatos_empresa(user, admin, empresa_id):
     collection_contatos = get_collection("contatos")
 
     # Buscar **apenas** os contatos vinculados à empresa atualmente selecionada
-    contatos = list(collection_contatos.find({"empresa": empresa_cnpj}, {"_id": 0}))
+    contatos = list(collection_contatos.find({"empresa_id": empresa_id}, {"_id": 0}))
+    # buscar o nome da empresa com base no empresa_id
+    collection_empresas = get_collection("empresas")
+    empresa = collection_empresas.find_one({"_id": empresa_id}, {"_id": 0, "razao_social": 1})
+    nome_empresa = empresa["razao_social"] if empresa else "Empresa não encontrada"
 
     # Verifica permissão para adicionar, editar ou remover contatos
     if admin or (user == st.session_state["empresa_selecionada"]["Proprietário"]):
@@ -34,8 +38,8 @@ def exibir_contatos_empresa(user, admin, empresa_cnpj):
                 if submit_adicionar:
                     # Verificar se o contato já existe em **outra empresa**
                     contato_existente = collection_contatos.find_one({"email": email})
-                    if contato_existente and contato_existente["empresa"] != empresa_cnpj:
-                        st.error(f"Erro: O contato '{email}' já está vinculado ao banco de dados na empresa '{contato_existente["empresa"]}'!")
+                    if contato_existente and contato_existente["empresa_id"] != empresa_id:
+                        st.error(f"Erro: O contato '{email}' já está vinculado ao banco de dados na empresa '{contato_existente['empresa']}'!")
                     else:
                         # Adicionar contato APENAS à empresa selecionada
                         collection_contatos.insert_one({
@@ -44,7 +48,8 @@ def exibir_contatos_empresa(user, admin, empresa_cnpj):
                             "cargo": cargo,
                             "email": email,
                             "fone": telefone,
-                            "empresa": empresa_cnpj  # O contato pertence APENAS a essa empresa!
+                            "empresa": nome_empresa,  # O contato pertence APENAS a essa empresa!
+                            "empresa_id": empresa_id  # ID da empresa para referência
                         })
                         
                         st.success("Contato adicionado com sucesso!")
@@ -55,13 +60,19 @@ def exibir_contatos_empresa(user, admin, empresa_cnpj):
             with st.popover('✏️ Editar contato'):
                 contato_selecionado = st.selectbox(
                     "Selecione um contato para editar/remover",
-                    options=[f"{c['nome']} {c['sobrenome']} ({c['email']})" for c in contatos]
+                    options=[f"{c['nome']} {c['sobrenome']}" for c in contatos]
                 )
 
                 if contato_selecionado:
-                    email_editar = contato_selecionado.split("(")[-1].strip(")")
+                    # Assumindo que o primeiro 'word' é o nome e o resto forma o sobrenome
+                    parts = contato_selecionado.split(" ", 1)
+                    nome_selecionado = parts[0]
+                    sobrenome_selecionado = parts[1] if len(parts) > 1 else ""
 
-                    contato_dados = collection_contatos.find_one({"email": email_editar, "empresa": empresa_cnpj}, {"_id": 0})
+                    contato_dados = collection_contatos.find_one(
+                        {"nome": nome_selecionado, "sobrenome": sobrenome_selecionado, "empresa_id": empresa_id},
+                        {"_id": 0}
+                    )
 
                     if contato_dados:
                         with st.form("form_editar_contato"):
@@ -82,8 +93,10 @@ def exibir_contatos_empresa(user, admin, empresa_cnpj):
                             submit_editar = st.form_submit_button("💾 Salvar Alterações")
 
                             if submit_editar:
+                                # Utilize o nome e sobrenome originais para identificar o registro antes da atualização,
+                                # garantindo que a atualização ocorra no documento correto mesmo se esses campos forem alterados.
                                 collection_contatos.update_one(
-                                    {"email": email_editar, "empresa": empresa_cnpj},  # Apenas para a empresa correta
+                                    {"nome": contato_dados["nome"], "sobrenome": contato_dados["sobrenome"], "empresa_id": empresa_id},
                                     {"$set": {
                                         "nome": nome_edit,
                                         "sobrenome": sobrenome_edit,
@@ -96,16 +109,18 @@ def exibir_contatos_empresa(user, admin, empresa_cnpj):
                                 st.success("Contato atualizado com sucesso!")
                                 st.rerun()
                                 
-
+                        
                     if st.button("🗑️ Remover Contato"):
-                        collection_contatos.delete_one({"email": email_editar, "empresa": empresa_cnpj})  # Apenas na empresa vinculada
+                        collection_contatos.delete_one(
+                            {"nome": contato_dados["nome"], "sobrenome": contato_dados["sobrenome"], "empresa_id": empresa_id}
+                        )  # Apenas na empresa vinculada
                         st.success(f"Contato {contato_selecionado} removido com sucesso!")
                         st.rerun()
                         
                         
                         
                         
-    contatos = list(collection_contatos.find({"empresa": empresa_cnpj}, {"_id": 0}))
+    contatos = list(collection_contatos.find({"empresa_id": empresa_id}, {"_id": 0}))
     with st.expander("📞 Contatos cadastrados", expanded=True):
         if contatos:
             df_contatos = pd.DataFrame(contatos)

@@ -148,7 +148,13 @@ def gerenciamento_produtos():
             
             st.write("Edite os produtos abaixo:")
             # Exibe a tabela editável ocultando o índice (que agora contém o doc_id)
+            if 'escopo' in filtered_df.columns:
+                # Converte listas para strings separados por vírgula para que a coluna fique editável
+                filtered_df['escopo'] = filtered_df['escopo'].apply(lambda x: ', '.join(x) if isinstance(x, list) else x)
             edited_df = st.data_editor(filtered_df, num_rows="dynamic", use_container_width=True, hide_index=True)
+            if 'escopo' in edited_df.columns:
+                # Converte a string de volta para lista após a edição
+                edited_df['escopo'] = edited_df['escopo'].apply(lambda x: [item.strip() for item in x.split(',')] if isinstance(x, str) and x else [])
             
             if st.button("Salvar Alterações"):
                 for _, row in edited_df.iterrows():

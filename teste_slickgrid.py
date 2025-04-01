@@ -79,9 +79,9 @@ if 'senha' not in st.session_state:    ### NEW OR UPDATED ###
     st.session_state['senha'] = None
 
 st.session_state['logado'] = True
-st.session_state['name'] = "Rodrigo"
-st.session_state['lastname'] = "Leitzke"
-st.session_state['roles'] = "viewer"
+st.session_state['name'] = "Alexandre"
+st.session_state['lastname'] = "Castagini"
+st.session_state['roles'] = "admin"
 if not st.session_state['logado']:
     
     CLIENT_ID = str(st.secrets["azure"]["client_id"])

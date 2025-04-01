@@ -56,6 +56,200 @@ def format_currency(value):
     return "R$ " + "{:,.2f}".format(value).replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def cadastrar_negocio(cliente, collection_clientes, collection_usuarios, collection_produtos, collection_oportunidades, collection_atividades, user, admin):
+    if not admin:
+        clientes = list(collection_clientes.find({"proprietario": user}, {"_id": 1, "razao_social": 1, "cnpj": 1}))
+    else: 
+        clientes = list(collection_clientes.find({}, {"_id": 1, "razao_social": 1, "cnpj": 1}))
+    # Obter todos os usuários e produtos
+    usuarios = list(collection_usuarios.find({}, {"_id": 0, "nome": 1, "sobrenome": 1, "email": 1}))
+    produtos = list(collection_produtos.find({}, {"_id": 0, "nome": 1, "categoria": 1, "preco": 1, "base_desconto": 1}))
+
+    if not clientes:
+        st.warning("Cadastre um cliente antes de criar oportunidades.")
+    elif not usuarios or not produtos:
+        st.warning("Certifique-se de ter usuários e produtos cadastrados.")
+    else:
+        nome_opp = st.text_input('Nome da oportunidade', key="nome_oportunidade")
+        # Multiselect para permitir a seleção de mais de um produto
+        #produtos_selecionados_text = st.multiselect("Produtos", options=opcoes_produtos, key="select_produto_oportunidade")
+        total = st.number_input('Valor estimado', key="valor_estimado_oportunidade")
+        #estagio = st.selectbox("Estágio", options=estagios, key="select_estagio_oportunidade")
+        estagio = 'Aguardando projeto'
+        data_fechamento_date = st.date_input("Data de Fechamento (Prevista)", key="input_data_fechamento_oportunidade")
+    
+        if st.button("✅ Cadastrar"):
+            # Verificar se já existe um negócio com o mesmo nome
+            if collection_oportunidades.find_one({"nome_oportunidade": nome_opp}):
+                st.error("Já existe um negócio com esse nome. Por favor, escolha outro nome para a oportunidade.")
+            elif cliente:
+                # Buscar o cliente selecionado convertendo o _id para string para garantir a correspondência
+                cliente_selecionado = next((c for c in clientes if str(c['_id']) == str(cliente)), None)
+                # Buscar os produtos selecionados (mapeia os textos selecionados para os objetos de produtos)
+                #produtos_selecionados_obj = [p for p in produtos if f"{p['nome']}" in produtos_selecionados_text]
+            
+                if cliente_selecionado:
+                    data_criacao = datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+                    data_fechamento_datetime = datetime.combine(data_fechamento_date, time.min)
+                    data_fechamento = data_fechamento_datetime.isoformat(timespec='milliseconds') + 'Z'
+                    
+                    # "produtos" será uma lista com os nomes dos produtos selecionados
+                    
+                    valor_estimado_formatado = format_currency(total)
+                    
+                    document = {
+                    "cliente": cliente_selecionado["razao_social"],
+                    "nome_oportunidade": nome_opp,
+                    "proprietario": user,
+                    "produtos": '',
+                    "valor_estimado": valor_estimado_formatado,
+                    "valor_orcamento": '',
+                    "estagio": estagio,
+                    "data_criacao": data_criacao,
+                    "data_fechamento": data_fechamento,
+                    "motivo_perda": '',
+                    "motivo_ganho": '',
+                    "dias_para_fechar": '',
+                    "condicoes_pagamento": '',
+                    "prazo_execucao": '',
+                    "categoria": '',
+                    "tipo": '',
+                    "tamanho": '',
+                    "contatos_selecionados": [],
+                    "contato_principal": '',
+                    "desconto_solicitado": 20.0,
+                    "desconto_aprovado": 20.0,
+                    'negocio_fechado': False,
+                    'negocio_perdido': False,
+                    'aprovacao_gestor': False,
+                    'solicitacao_desconto': False,
+                    "empresa_id": cliente_selecionado["_id"]
+                    }
+                    collection_oportunidades.insert_one(document)
+            
+                    # Criar uma nova atividade informando que a oportunidade foi cadastrada
+                    nova_atividade = {
+                    "atividade_id": str(datetime.now().timestamp()),  
+                    "tipo_atividade": "Observação",
+                    "status": "Registrado",
+                    "titulo": f"Oportunidade '{nome_opp}' criada",
+                    "empresa": cliente_selecionado["razao_social"],
+                    "descricao": f"O vendedor {user} criou a oportunidade '{nome_opp}' com valor estimado de: {valor_estimado_formatado}.",
+                    "data_execucao_atividade": datetime.today().strftime("%Y-%m-%d"),
+                    "data_criacao_atividade": datetime.today().strftime("%Y-%m-%d")
+                    }
+            
+                    collection_atividades.insert_one(nova_atividade)
+                    st.success("Oportunidade e atividade cadastradas com sucesso!")
+                    st.rerun()
+                else:
+                    st.error("Erro ao localizar as entidades selecionadas. Tente novamente.")
+            else:
+                st.error("Preencha todos os campos obrigatórios.")
+
+def editar_negocio(cliente_id, collection_oportunidades, collection_clientes, collection_atividades, user, admin):
+    
+    # Buscar o cliente pelo client_id e obter seu nome
+    cliente_doc = collection_clientes.find_one({"_id": cliente_id})
+    if not cliente_doc:
+        st.warning("Cliente não encontrado.")
+        return
+    cliente_nome = cliente_doc.get("razao_social", "Cliente desconhecido")
+    
+    # Obter oportunidades do cliente filtrando pela empresa_id (client_id) 
+    query = {"empresa_id": cliente_id}
+    if not admin:
+        query["proprietario"] = user
+    oportunidades = list(collection_oportunidades.find(query, {
+        "_id": 0,
+        "nome_oportunidade": 1,
+        "cliente": 1,
+        "valor_estimado": 1,
+        "data_fechamento": 1
+    }))
+
+    if not oportunidades:
+        st.warning("Nenhum negócio encontrado para o cliente selecionado.")
+        return
+
+    # Selecionar o negócio a editar
+    nomes_oportunidades = [opp["nome_oportunidade"] for opp in oportunidades]
+    negocio_selecionado = st.selectbox("Selecione o negócio a editar", nomes_oportunidades, key="select_negocio_para_editar")
+
+    # Recuperar os dados do negócio selecionado
+    negocio = next((opp for opp in oportunidades if opp["nome_oportunidade"] == negocio_selecionado), None)
+    if not negocio:
+        st.error("Negócio não encontrado.")
+        return
+
+    # Permitir editar os campos do negócio
+    # Se o nome da oportunidade já existir para o cliente (além do negócio atual),
+    # não permite alterar o nome.
+    novo_nome = st.text_input("Nome da oportunidade", value=negocio.get("nome_oportunidade", ""), key="edit_nome_oportunidade")
+
+    # Converter a string formatada de moeda para float (se possível)
+    def parse_currency(value):
+        try:
+            return float(value.replace("R$", "").replace(".", "").replace(",", ".").strip())
+        except Exception:
+            return 0.0
+
+    valor_atual = parse_currency(negocio.get("valor_estimado", "0"))
+    novo_valor = st.number_input("Valor estimado", value=valor_atual, key="edit_valor_estimado")
+
+    # Converter data_fechamento para objeto date
+    try:
+        data_fechamento_atual = pd.to_datetime(negocio.get("data_fechamento")).date()
+    except Exception:
+        data_fechamento_atual = dt.date.today()
+    nova_data_fechamento_date = st.date_input("Data de Fechamento (Prevista)", value=data_fechamento_atual, key="edit_data_fechamento")
+
+    # Manter o cliente associado conforme o client_id informado
+    novo_cliente = cliente_nome
+
+    # Botão para salvar as alterações
+    if st.button("Salvar alterações", key="salvar_alteracoes_negocio"):
+        # Se o nome for alterado, verificar se o novo nome já existe para o cliente (desconsiderando o atual)
+        if novo_nome != negocio["nome_oportunidade"]:
+            outros_nomes = [opp["nome_oportunidade"] for opp in oportunidades if opp["nome_oportunidade"] != negocio["nome_oportunidade"]]
+            if novo_nome in outros_nomes:
+                st.error("Já existe oportunidade com esse nome para este cliente. O nome não pode ser alterado.")
+                return
+
+        data_fechamento_datetime = datetime.combine(nova_data_fechamento_date, time.min)
+        nova_data_fechamento = data_fechamento_datetime.isoformat(timespec='milliseconds') + 'Z'
+        valor_estimado_formatado = format_currency(novo_valor)
+
+        update_fields = {
+            "nome_oportunidade": novo_nome,
+            "valor_estimado": valor_estimado_formatado,
+            "data_fechamento": nova_data_fechamento,
+            "cliente": novo_cliente
+        }
+
+        result = collection_oportunidades.update_one(
+            {"nome_oportunidade": negocio_selecionado},
+            {"$set": update_fields}
+        )
+        if result.modified_count:
+            # Criar uma atividade para registrar a edição do negócio
+            nova_atividade = {
+                "atividade_id": str(datetime.now().timestamp()),
+                "tipo_atividade": "Observação",
+                "status": "Registrado",
+                "titulo": f"Negócio '{novo_nome}' editado",
+                "empresa": novo_cliente,
+                "descricao": f"O vendedor {user} editou o negócio '{novo_nome}' com novo valor estimado de: {valor_estimado_formatado} e nova data de fechamento: {nova_data_fechamento}.",
+                "data_execucao_atividade": datetime.today().strftime("%Y-%m-%d"),
+                "data_criacao_atividade": datetime.today().strftime("%Y-%m-%d")
+            }
+            collection_atividades.insert_one(nova_atividade)
+            st.success("Negócio atualizado com sucesso!")
+            st.rerun()
+        else:
+            st.warning("Nenhuma alteração foi realizada.")
+        
+
 def gerenciamento_oportunidades(user, admin):
     
     collection_atividades = get_collection("atividades")

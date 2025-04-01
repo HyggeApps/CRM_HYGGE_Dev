@@ -2,147 +2,67 @@ import streamlit as st
 from msal import ConfidentialClientApplication
 import requests
 import smtplib
-
-from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
-import streamlit as st
-# Importing custom modules for CRM functionalities
+import pandas as pd
+import utils.database as db
+from streamlit_slickgrid import (
+    slickgrid,
+)
+import modules.dataview.exibir_dados as exibir_dados
 from modules import (
-    usuarios,
-    empresas,
-    tarefas,
-    meus_numeros,
-    contatos,
-    templates,
-    produtos,
-    negocios,
-    orcamentos,
-    aprovacoes
+    usuarios as usuarios_lib,
+    empresas as empresas_lib,
+    tarefas as tarefas_lib,
+    meus_numeros as meus_numeros_lib,
+    contatos as contatos_lib,
+    templates as templates_lib,
+    produtos as produtos_lib,
+    negocios as negocios_lib,
+    orcamentos as orcamentos_lib,
+    aprovacoes as aprovacoes_lib,
 )
-from utils import functions as funcs
-from streamlit_authenticator.utilities import (CredentialsError,
-                                               ForgotError,
-                                               Hasher,
-                                               LoginError,
-                                               RegisterError,
-                                               ResetError,
-                                               UpdateError)
-import json
-from utils.database import get_collection
+import modules.css_adicionais as css_adicionais
+import modules.slickgrids as sl
+import utils.functions as funcs
 from streamlit_option_menu import option_menu
+css_adicionais.page_config()
 
+collection_empresas = db.get_collection("empresas")
+collection_contatos = db.get_collection("contatos")
+collection_tarefas = db.get_collection("tarefas")
+collection_atividades = db.get_collection("atividades")
+collection_negocios = db.get_collection("oportunidades")
+collection_usuarios = db.get_collection("usuarios")
+collection_produtos = db.get_collection("produtos")
+collection_oportunidades = db.get_collection("oportunidades")
+collection_cidades = db.get_collection("cidades")
+collection_ufs = db.get_collection("ufs")
 
-# Configuração da página
-st.set_page_config(
-    page_title='CRM HYGGE', layout='wide',
-    page_icon='https://hygge.eco.br/wp-content/uploads/2022/06/Logo_site.png'
-)
+# Carrega todas as empresas de uma vez
+empresas = list(collection_empresas.find())
+empresa_ids = [empresa["_id"] for empresa in empresas]
 
-image1 = 'https://hygge.eco.br/wp-content/uploads/2024/07/white.png'
-image_width_percent = 40
+# Realiza consultas em lote usando "$in" para evitar consultas individuais
+contatos = list(collection_contatos.find({"empresa_id": {"$in": empresa_ids}}))
+tarefas = list(collection_tarefas.find({"empresa_id": {"$in": empresa_ids}}))
+atividades = list(collection_atividades.find({"empresa_id": {"$in": empresa_ids}}))
+oportunidades = list(collection_negocios.find({"empresa_id": {"$in": empresa_ids}}))
 
-html_code1 = f"""
-    <div style="display: flex; justify-content: center; align-items: center; height: 100%; ">
-        <img src="{image1}" alt="Image" style="width: {image_width_percent}%;"/>
-    </div>
-"""
-st.sidebar.markdown(html_code1, unsafe_allow_html=True)
+# Cria mapeamentos para acesso rápido
+contatos_map = {}
+for contato in contatos:
+    contatos_map.setdefault(contato["empresa_id"], []).append(contato)
 
-css = '''
-    <style>
-        /* Seleciona o container do conteúdo do st.popover */
-        [data-testid="stPopover"] > div:nth-child(2) {
-            overflow-y: auto;
-            max-height: 800px;
-        }
-    </style>
-    '''
-st.markdown(css, unsafe_allow_html=True)
+tarefas_map = {}
+for tarefa in tarefas:
+    tarefas_map.setdefault(tarefa["empresa_id"], []).append(tarefa)
 
-css = '''
-    <style>
-        [data-testid="stExpander"] div:has(>.streamlit-expanderContent) {
-            overflow-y: auto;
-            max-height: 400px;
-        }
-    </style>
-    '''
-st.markdown(css, unsafe_allow_html=True)
+atividades_map = {}
+for atividade in atividades:
+    atividades_map.setdefault(atividade["empresa_id"], []).append(atividade)
 
-st.markdown(
-    """
-    <style>
-    .stForm {
-        width: 95% !important; /* Ajusta a largura do formulário */
-        margin: auto; /* Centraliza o formulário */
-        padding: 10px; /* Adiciona mais espaço interno */
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Adicionando CSS personalizado
-st.markdown(
-    """
-    <style>
-    /* Ajustar o tamanho da fonte global */
-    html, body, [class*="css"] {
-        font-size: 0.875rem !important; /* Reduz a fonte em 2pt */
-    }
-
-    /* Opcional: Ajustar fontes específicas */
-    h1 {
-        font-size: 2.75rem !important; /* Tamanho para H1 */
-    }
-    h2 {
-        font-size: 2.5rem !important; /* Tamanho para H2 */
-    }
-    h3 {
-        font-size: 1.25rem !important; /* Tamanho para H3 */
-    }
-    .stButton > button {
-        font-size: 0.875rem !important; /* Botões */
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# Adicionando CSS personalizado para ajustar o tamanho da fonte
-st.markdown(
-    """
-    <style>
-    /* Ajustar o tamanho da fonte do menu */
-    .nav-link {
-        font-size: 8px !important; /* Tamanho da fonte desejado */
-    }
-    .nav-link i {
-        font-size: 10px !important; /* Ajustar o tamanho do ícone, se necessário */
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-css = """
-<style>
-    /* Aplica rolagem ao conteúdo dentro dos expanders */
-    div[data-testid="stExpanderDetails"] {
-        max-height: 500px !important;  /* Altura máxima antes do scroll */
-        overflow-y: auto !important;  /* Força a rolagem vertical */
-    }
-</style>
-"""
-st.markdown(css, unsafe_allow_html=True)
-
-st.sidebar.markdown('------')
-
-# Criar um arquivo temporário com os usuários do MongoDB
-collection_usuarios = get_collection("usuarios")
-temp_config_path = funcs.create_temp_config_from_mongo(collection_usuarios)
-config_data = funcs.load_config_and_check_or_insert_cookies(temp_config_path)
-
+oportunidades_map = {}
+for oportunidade in oportunidades:
+    oportunidades_map.setdefault(oportunidade["empresa_id"], []).append(oportunidade)
 
 # Verifique se a sessão já tem uma chave 'logado'
 if 'logado' not in st.session_state:
@@ -158,6 +78,10 @@ if 'roles' not in st.session_state:    ### NEW OR UPDATED ###
 if 'senha' not in st.session_state:    ### NEW OR UPDATED ###
     st.session_state['senha'] = None
 
+st.session_state['logado'] = True
+st.session_state['name'] = "Alexandre"
+st.session_state['lastname'] = "Castagini"
+st.session_state['roles'] = "admin"
 if not st.session_state['logado']:
     
     CLIENT_ID = str(st.secrets["azure"]["client_id"])
@@ -237,7 +161,6 @@ if not st.session_state['logado']:
         except Exception as e:
             st.sidebar.error("Falha no login, senha incorreta.")
 
-
 # This part is executed if the user is logged in - LOGIN DO USUÁRIO
 if st.session_state.get('logado', False):
     with st.sidebar:
@@ -245,12 +168,11 @@ if st.session_state.get('logado', False):
             st.info(f'Bem-vindo(a), **{st.session_state["name"]}**!')
             st.info('Este é o ambiente de **admin** para consulta, preenchimento, controle e envio das informações referentes as oportunidades da HYGGE.')
 
-            
             # 1. as sidebar menu
             selected = option_menu(
                 f"CRM HYGGE (Admin)",
-                ["Tarefas", "Empresas", "Contatos", "Negócios", "Orçamentos", "Aceites", "Templates", "Produtos", "Usuários", "Solicitações", "Indicadores"],
-                icons=["list-task", "building", "person-lines-fill", "currency-dollar", "calculator-fill", "bag-check", "file-earmark-text", "archive", "person-add", "check2-square","speedometer"],
+                ["Home", "Negócios", "Controle de orçamentos", "Templates", "Produtos", "Usuários", "Solicitações", "Indicadores"],
+                icons=["house", "currency-dollar", "calculator-fill", "file-earmark-text", "archive", "person-add", "check2-square","speedometer"],
                 menu_icon="cast",
                 default_index=0,
                 styles={
@@ -260,16 +182,15 @@ if st.session_state.get('logado', False):
                     "nav-link-selected": {"font-size": "12px"},  # Style for the selected link
                 },
             )
-        else:
-                
+        else:     
             st.info(f'Bem-vindo(a), **{st.session_state["name"]}**!')
             st.info('Este é o ambiente de **vendedor** para consulta, preenchimento, controle e envio das informações referentes as oportunidades da HYGGE.')
 
             # 1. as sidebar menu
             selected = option_menu(
                 f"CRM HYGGE (Vendedor)",
-                ["Tarefas", "Empresas", "Contatos", "Negócios", "Orçamentos", "Aceites", "Templates", "Produtos", "Usuários", "Solicitações", "Indicadores"],
-                icons=["list-task", "building", "person-lines-fill", "currency-dollar", "calculator-fill", "bag-check", "file-earmark-text", "archive", "person-add", "check2-square","speedometer"],
+                ["Home", "Negócios", "Controle de orçamentos", "Templates", "Produtos", "Usuários", "Solicitações", "Indicadores"],
+                icons=["house", "currency-dollar", "calculator-fill", "file-earmark-text", "archive", "person-add", "check2-square","speedometer"],
                 menu_icon="cast",
                 default_index=0,
                 styles={
@@ -279,59 +200,88 @@ if st.session_state.get('logado', False):
                     "nav-link-selected": {"font-size": "12px"},  # Style for the selected link
                 },
             )
-
     usuario_ativo = f'{st.session_state["name"]} {st.session_state["lastname"]}'
+    data, columns, options = sl.slickgrid_empresa(empresas, contatos, contatos_map)
+    if selected == "Home":
+        st.title("📜 Tarefas")
+        st.info("Acompanhe na tabela abaixo as tarefas relacionadas às suas empresas.")
+        with st.expander("Minhas tarefas", expanded=False):
+            if 'admin' in st.session_state["roles"]: tarefas_lib.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=True)
+            else: tarefas_lib.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=False)
 
-    if selected == "Tarefas":
-        st.header("📜 Tarefas")
-        #st.info('Acompanhe aqui suas tarefas e seus números.')
-
-        tela_tarefas, tela_stats = st.tabs(['Minhas tarefas', 'Meus números'])
-        with tela_tarefas:
-            if 'admin' in st.session_state["roles"]: tarefas.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=True)
-            else: tarefas.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=False)
-        with tela_stats:
-            st.info('Em desenvolvimento...')
-            #meus_numeros.compilar_meus_numeros(usuario_ativo)
-    elif selected == "Empresas":
-        st.header("🏢 Empresas")
-        #st.info('Consulte, cadastre e edite suas empresas.')
         st.write('----')
-
-        with st.popover("➕ Cadastrar empresa"):
-            if 'admin' in st.session_state["roles"]: empresas.cadastrar_empresas(usuario_ativo,admin=True)
-            else: empresas.cadastrar_empresas(usuario_ativo,admin=False)
-
-        if 'admin' in st.session_state["roles"]:  empresas.consultar_empresas(usuario_ativo, admin=True)
-        else: empresas.consultar_empresas(usuario_ativo, admin=False)
-
-        
-    elif selected == 'Contatos':
-        st.header("📞 Contatos")
-        #st.info('Consulte contatos aqui.')
-        st.warning("⚠️ IMPORTANTE: O cadastro de contatos deve ser feito a partir da tela da 'Empresas'")
+        st.title("🏢 Empresas")
+        st.info("Pesquise e clique em uma empresa dentre as opções abaixo para consultar mais informações a respeito desta empresa.")
+        with st.popover("➕ Cadastrar empresa", use_container_width=True):
+                if 'admin' in st.session_state["roles"]: empresas_lib.cadastrar_empresas(usuario_ativo,admin=True)
+                else: empresas_lib.cadastrar_empresas(usuario_ativo,admin=False)
         st.write('----')
-        contatos.exibir_todos_contatos_empresa()
-        
+        out = slickgrid(data, columns, options, key="mygrid", on_click='rerun')
+        if out is not None:
+            # Persist the selected row index in session_state
+            st.session_state.selected_row = out[0]
+
+        # Verifica se já existe uma seleção persistida
+        if "selected_row" in st.session_state:
+            row = st.session_state.selected_row
+            item = data[row]
+            tabs = st.tabs(["Informações", "Contatos", "Tarefas", "Atividades", "Negócios", "Orçamentos"])
+            empresa_obj = next((empresa for empresa in empresas if empresa.get("razao_social", "") == item["empresa"]), None)
+            if not empresa_obj:
+                st.write("Empresa não encontrada.")
+            else:
+                empresa_id = empresa_obj["_id"]
+
+                with tabs[0]:
+                    if item.get("infos") is None:
+                        if 'admin' in st.session_state["roles"]:
+                            exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=True)
+                        else:
+                            exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=False)
+                    else:
+                        st.write("Informações da empresa não disponíveis para linhas detalhadas.")
+
+                with tabs[1]:
+                    if 'admin' in st.session_state["roles"]:
+                        exibir_dados.infos_contatos(contatos_map.get(empresa_id, []), collection_contatos, collection_empresas, usuario_ativo, admin=True)
+                    else:
+                        exibir_dados.infos_contatos(contatos_map.get(empresa_id, []), collection_contatos, collection_empresas, usuario_ativo, admin=False)
+
+                with tabs[2]:
+                    exibir_dados.infos_tarefas(tarefas_map.get(empresa_id, []), collection_tarefas)
+
+                with tabs[3]:
+                    exibir_dados.infos_atividades(atividades_map.get(empresa_id, []), collection_atividades)
+
+                with tabs[4]:
+                    tabs_negocios = st.tabs(["Visualizar negócios", "Adicionar negócio", "Editar negócio"])
+                    with tabs_negocios[0]:
+                        exibir_dados.infos_negocios(oportunidades_map.get(empresa_id, []), collection_negocios)
+                    with tabs_negocios[1]:
+                        if 'admin' in st.session_state["roles"]:
+                            negocios_lib.cadastrar_negocio(empresa_obj["_id"], collection_empresas,collection_usuarios, collection_produtos, collection_oportunidades, collection_atividades, usuario_ativo, admin=True)
+                        else:
+                            negocios_lib.cadastrar_negocio(empresa_obj["_id"], collection_empresas,collection_usuarios, collection_produtos, collection_oportunidades, collection_atividades, usuario_ativo, admin=False)
+                    with tabs_negocios[2]:
+                        if 'admin' in st.session_state["roles"]:
+                            negocios_lib.editar_negocio(empresa_obj["_id"], collection_oportunidades, collection_empresas,collection_atividades, usuario_ativo, admin=True)
+                        else:
+                            negocios_lib.editar_negocio(empresa_obj["_id"], collection_oportunidades, collection_empresas,collection_atividades, usuario_ativo, admin=False)
+                with tabs[5]:
+                    tabs_orcamentos = st.tabs(["Visualizar orçamentos", "Adicionar orçamento", "Editar orçamento", "Aceite de orçamento"])
+            
     elif selected == 'Negócios':
         st.header("💰 Negócios")
         #st.info('Consulte, cadastre e edite os seus negócios aqui.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: negocios.gerenciamento_oportunidades(usuario_ativo, admin=True)
-        else: negocios.gerenciamento_oportunidades(usuario_ativo, admin=False)
+        if 'admin' in st.session_state["roles"]: negocios_lib.gerenciamento_oportunidades(usuario_ativo, admin=True)
+        else: negocios_lib.gerenciamento_oportunidades(usuario_ativo, admin=False)
         
-    elif selected == 'Orçamentos':
-        st.header("📠 Orçamentos")
-        #st.info('Consulte, cadastre e edite os seus negócios aqui.')
-        st.write('----')
-        if 'admin' in st.session_state["roles"]: orcamentos.elaborar_orcamento(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=True)
-        else: orcamentos.elaborar_orcamento(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=False)
-
     elif selected == 'Templates':
         st.header("📎 Templates")
         #st.info('Consulte, cadastre e edite os templates da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: templates.gerenciamento_templates()
+        if 'admin' in st.session_state["roles"]: templates_lib.gerenciamento_templates()
         else: st.warning("Você não tem permissão para alterar templates.")
 
 
@@ -339,27 +289,26 @@ if st.session_state.get('logado', False):
         st.header("📚 Produtos")
         #st.info('Consulte, cadastre e edite os produtos da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: produtos.gerenciamento_produtos()
+        if 'admin' in st.session_state["roles"]: produtos_lib.gerenciamento_produtos()
         else: st.warning("Você não tem permissão para alterar produtos.")
 
     elif selected == 'Usuários':
         st.header("🧑‍💻 Usuários")
         #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: usuarios.gerenciamento_usuarios()
+        if 'admin' in st.session_state["roles"]: usuarios_lib.gerenciamento_usuarios()
         else: st.warning("Você não tem permissão para alterar usuários.")
     
     elif selected == 'Solicitações':
         st.header("✅ Solicitação de aprovação")
         #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: aprovacoes.gerenciamento_aprovacoes()
+        if 'admin' in st.session_state["roles"]: aprovacoes_lib.gerenciamento_aprovacoes()
         else: st.warning("Você não tem permissão para aprovar solicitações.")
     
     elif selected == 'Aceites':
         st.header("✒️ Aceite de propostas")
         #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: orcamentos.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=True)
-        else: orcamentos.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=False)
-        
+        if 'admin' in st.session_state["roles"]: orcamentos_lib.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=True)
+        else: orcamentos_lib.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=False)

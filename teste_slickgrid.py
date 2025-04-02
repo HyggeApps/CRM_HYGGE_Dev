@@ -79,9 +79,9 @@ if 'senha' not in st.session_state:    ### NEW OR UPDATED ###
     st.session_state['senha'] = None
 
 st.session_state['logado'] = True
-st.session_state['name'] = "Alexandre"
-st.session_state['lastname'] = "Castagini"
-st.session_state['roles'] = "admin"
+st.session_state['name'] = "Rodrigo"
+st.session_state['lastname'] = "Leitzke"
+st.session_state['roles'] = "viewer"
 if not st.session_state['logado']:
     
     CLIENT_ID = str(st.secrets["azure"]["client_id"])
@@ -248,7 +248,10 @@ if st.session_state.get('logado', False):
                         exibir_dados.infos_contatos(contatos_map.get(empresa_id, []), collection_contatos, collection_empresas, usuario_ativo, admin=False)
 
                 with tabs[2]:
-                    exibir_dados.infos_tarefas(tarefas_map.get(empresa_id, []), collection_tarefas)
+                    if 'admin' in st.session_state["roles"]:
+                        exibir_dados.infos_tarefas(tarefas_map.get(empresa_id, []), collection_tarefas, collection_empresas, collection_usuarios, usuario_ativo, admin=True)
+                    else:
+                        exibir_dados.infos_tarefas(tarefas_map.get(empresa_id, []), collection_tarefas, collection_empresas, collection_usuarios, usuario_ativo, admin=False)
 
                 with tabs[3]:
                     exibir_dados.infos_atividades(atividades_map.get(empresa_id, []), collection_atividades)

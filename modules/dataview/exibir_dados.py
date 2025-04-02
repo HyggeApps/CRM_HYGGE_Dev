@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import utils.database as db
+import modules.tarefas as tarefas_module
 
 def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, admin):
     # Permite edição se o user for o proprietário da empresa ou se for admin
@@ -185,44 +186,14 @@ def infos_contatos(contatos, collection_contatos, collection_empresas, user, adm
             else:
                 st.info("Nenhuma alteração realizada.")
 
-def infos_tarefas(tarefas, collection_tarefas, collection_empresas, user, admin):
+def infos_tarefas(tarefas, collection_tarefas, collection_empresas, collection_usuarios, user, admin):
+    
+    if tarefas:
+        empresa_id = tarefas[0].get("empresa_id")
+        tarefas_module.gerenciamento_tarefas(user, admin, empresa_id)
     if not tarefas:
         st.info("Nenhuma tarefa encontrada.")
         return
-
-    # Mapeia cada tarefa usando o título e a data de execução para facilitar a identificação.
-    opcoes = {
-        f"{tarefa.get('titulo', '').strip()} - {tarefa.get('data_execucao', '')}".strip() or f"Tarefa {i+1}": i 
-        for i, tarefa in enumerate(tarefas)
-    }
-    selecionado = st.selectbox("Selecione a tarefa para visualizar:", list(opcoes.keys()), key="tarefas_select")
-    indice = opcoes[selecionado]
-    tarefa_obj = tarefas[indice]
-
-    # Permite edição se o user for o proprietário da empresa ou for admin.
-    editable = admin or (collection_empresas.find_one({"_id": tarefa_obj.get("empresa_id"), "proprietario": user}) is not None)
-
-    titulo = st.text_input("Título", value=tarefa_obj.get("titulo", ""), disabled=not editable, key=f"tarefa_titulo_{indice}")
-    col1, col2 = st.columns(2)
-    with col1:
-        data_execucao = st.text_input("Data de Execução", value=tarefa_obj.get("data_execucao", ""), disabled=not editable, key=f"tarefa_data_execucao_{indice}")
-    with col2:
-        status = st.text_input("Status", value=tarefa_obj.get("status", ""), disabled=not editable, key=f"tarefa_status_{indice}")
-    observacoes = st.text_area("Observações", value=tarefa_obj.get("observacoes", ""), disabled=not editable, key=f"tarefa_observacoes_{indice}")
-
-    if editable:
-        if st.button("Salvar alterações", key=f"tarefa_salvar_alteracoes_{indice}"):
-            updated_data = {
-                "titulo": titulo,
-                "data_execucao": data_execucao,
-                "status": status,
-                "observacoes": observacoes,
-            }
-            result = collection_tarefas.update_one({"_id": tarefa_obj["_id"]}, {"$set": updated_data})
-            if result.modified_count:
-                st.success("Tarefa atualizada com sucesso.")
-            else:
-                st.info("Nenhuma alteração realizada.")
 
 def infos_atividades(atividades, collection_atividades):
     if not atividades:

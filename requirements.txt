@@ -20,3 +20,4 @@ wfork-streamlit-profiler
 streamlit_echarts
 streamlit_slickgrid
 streamlit-flow-component
+authlib

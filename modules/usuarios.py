@@ -41,7 +41,7 @@ def gerenciamento_usuarios():
                         collection.insert_one(document)
                         
                         st.success("Usuário cadastrado com sucesso!")
-                        st.rerun()
+                        
                         
                         
                 else:
@@ -68,7 +68,7 @@ def gerenciamento_usuarios():
                         result = collection.delete_one({"email": email})
                         if result.deleted_count > 0:
                             st.success(f"Usuário com Email '{email}' removido com sucesso!")
-                            st.rerun()
+                            
                         else:
                             st.error(f"Nenhum usuário encontrado com o Email '{email}'.")
 
@@ -108,7 +108,7 @@ def gerenciamento_usuarios():
                         )
                         
                         st.success(f"Usuário '{nome} {sobrenome}' atualizado com sucesso!")
-                        st.rerun()
+                        
                                                     
 
     # Aba: Exibir Usuários

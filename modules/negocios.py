@@ -165,7 +165,9 @@ def editar_negocio(cliente_id, collection_oportunidades, collection_clientes, co
         "nome_oportunidade": 1,
         "cliente": 1,
         "valor_estimado": 1,
-        "data_fechamento": 1
+        "data_fechamento": 1,
+        "estagio": 1,
+        "motivo_perda": 1
     }))
 
     if not oportunidades:
@@ -182,33 +184,44 @@ def editar_negocio(cliente_id, collection_oportunidades, collection_clientes, co
         st.error("Negócio não encontrado.")
         return
 
-    # Permitir editar os campos do negócio
-    # Se o nome da oportunidade já existir para o cliente (além do negócio atual),
-    # não permite alterar o nome.
-    novo_nome = st.text_input("Nome da oportunidade", value=negocio.get("nome_oportunidade", ""), key="edit_nome_oportunidade")
+    with st.form(key="form_editar_negocio"):
+        # Permitir editar os campos do negócio
+        novo_nome = st.text_input("Nome da oportunidade", value=negocio.get("nome_oportunidade", ""), key="edit_nome_oportunidade")
 
-    # Converter a string formatada de moeda para float (se possível)
-    def parse_currency(value):
+        options_estagios = ["Aguardando projeto", "Frio", "Morno", "Quente", "Aguardando a assinatura", "On-hold", "Perdido", "Fechado"]
+        default_stage = negocio.get("estagio", "Aguardando projeto")
+        default_index = options_estagios.index(default_stage) if default_stage in options_estagios else 0
+        estagio = st.selectbox("Estágio", options=options_estagios, index=default_index, key="select_estagio_oportunidade")
+        
+        motivos_options = ["", "Concorrente - Preço", "Concorrente  - NBR + Acústico", "Concorrente - Escopo", "Timing", "Não viu valor", "Fornecedor conhecido"]
+        doc = collection_oportunidades.find_one({"nome_oportunidade": negocio_selecionado})
+        motivo_perda_existente = doc.get("motivo_perda", "") if doc else ""
+        default_index = motivos_options.index(motivo_perda_existente) if motivo_perda_existente in motivos_options else 0
+        motivo_perda = st.selectbox("Motivo da perda (em caso de proposta **Perdida**)",
+                        options=motivos_options,
+                        index=default_index,
+                        key="select_motivo_perda_oportunidade")
+        
+        # Converter a string formatada de moeda para float (se possível)
+        def parse_currency(value):
+            try:
+                return float(value.replace("R$", "").replace(".", "").replace(",", ".").strip())
+            except Exception:
+                return 0.0
+
+        valor_atual = parse_currency(negocio.get("valor_estimado", "0"))
+        novo_valor = st.number_input("Valor estimado", value=valor_atual, key="edit_valor_estimado")
+
+        # Converter data_fechamento para objeto date
         try:
-            return float(value.replace("R$", "").replace(".", "").replace(",", ".").strip())
+            data_fechamento_atual = pd.to_datetime(negocio.get("data_fechamento")).date()
         except Exception:
-            return 0.0
+            data_fechamento_atual = dt.date.today()
+        nova_data_fechamento_date = st.date_input("Data de Fechamento (Prevista)", value=data_fechamento_atual, key="edit_data_fechamento")
+        
+        submit = st.form_submit_button("Salvar alterações")
 
-    valor_atual = parse_currency(negocio.get("valor_estimado", "0"))
-    novo_valor = st.number_input("Valor estimado", value=valor_atual, key="edit_valor_estimado")
-
-    # Converter data_fechamento para objeto date
-    try:
-        data_fechamento_atual = pd.to_datetime(negocio.get("data_fechamento")).date()
-    except Exception:
-        data_fechamento_atual = dt.date.today()
-    nova_data_fechamento_date = st.date_input("Data de Fechamento (Prevista)", value=data_fechamento_atual, key="edit_data_fechamento")
-
-    # Manter o cliente associado conforme o client_id informado
-    novo_cliente = cliente_nome
-
-    # Botão para salvar as alterações
-    if st.button("Salvar alterações", key="salvar_alteracoes_negocio"):
+    if submit:
         # Se o nome for alterado, verificar se o novo nome já existe para o cliente (desconsiderando o atual)
         if novo_nome != negocio["nome_oportunidade"]:
             outros_nomes = [opp["nome_oportunidade"] for opp in oportunidades if opp["nome_oportunidade"] != negocio["nome_oportunidade"]]
@@ -224,7 +237,9 @@ def editar_negocio(cliente_id, collection_oportunidades, collection_clientes, co
             "nome_oportunidade": novo_nome,
             "valor_estimado": valor_estimado_formatado,
             "data_fechamento": nova_data_fechamento,
-            "cliente": novo_cliente
+            "cliente": cliente_nome,
+            "estagio": estagio,
+            "motivo_perda": motivo_perda if estagio == "Perdido" else "",
         }
 
         result = collection_oportunidades.update_one(
@@ -238,14 +253,13 @@ def editar_negocio(cliente_id, collection_oportunidades, collection_clientes, co
                 "tipo_atividade": "Observação",
                 "status": "Registrado",
                 "titulo": f"Negócio '{novo_nome}' editado",
-                "empresa": novo_cliente,
+                "empresa": cliente_nome,
                 "descricao": f"O vendedor {user} editou o negócio '{novo_nome}' com novo valor estimado de: {valor_estimado_formatado} e nova data de fechamento: {nova_data_fechamento}.",
                 "data_execucao_atividade": datetime.today().strftime("%Y-%m-%d"),
                 "data_criacao_atividade": datetime.today().strftime("%Y-%m-%d")
             }
             collection_atividades.insert_one(nova_atividade)
             st.success("Negócio atualizado com sucesso!")
-            st.rerun()
         else:
             st.warning("Nenhuma alteração foi realizada.")
         

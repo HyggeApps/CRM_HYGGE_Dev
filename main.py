@@ -64,110 +64,21 @@ oportunidades_map = {}
 for oportunidade in oportunidades:
     oportunidades_map.setdefault(oportunidade["empresa_id"], []).append(oportunidade)
 
-# Verifique se a sessão já tem uma chave 'logado'
-if 'logado' not in st.session_state:
-    st.session_state['logado'] = False
-if 'name' not in st.session_state:     ### NEW OR UPDATED ###
-    st.session_state['name'] = None
-if 'lastname' not in st.session_state:     ### NEW OR UPDATED ###
-    st.session_state['lastname'] = None
-if 'email' not in st.session_state:    ### NEW OR UPDATED ###
-    st.session_state['email'] = None
-if 'roles' not in st.session_state:    ### NEW OR UPDATED ###
-    st.session_state['roles'] = None
-if 'senha' not in st.session_state:    ### NEW OR UPDATED ###
-    st.session_state['senha'] = None
 
-#st.session_state['logado'] = True
-#st.session_state['name'] = "Alexandre"
-#st.session_state['lastname'] = "Castagini"
-#st.session_state['roles'] = "admin"
-if not st.session_state['logado']:
-    
-    CLIENT_ID = str(st.secrets["azure"]["client_id"])
-    CLIENT_SECRET = str(st.secrets["azure"]["client_secret"])
-    TENANT_ID = str(st.secrets["azure"]["tenant_id"])
-
-    AUTHORITY_URL = f'https://login.microsoftonline.com/{TENANT_ID}'
-    SCOPE = ['https://graph.microsoft.com/.default']
-    # Criar uma instância de aplicação
-    app = ConfidentialClientApplication(CLIENT_ID, authority=AUTHORITY_URL, client_credential=CLIENT_SECRET)
-
-    # Adquirir token
-    result = app.acquire_token_for_client(scopes=SCOPE)
-
-    if "access_token" in result:
-        # Usar o token de acesso para chamar o Microsoft Graph API
-        token = result['access_token']
-        headers = {'Authorization': 'Bearer ' + token}
-        url = 'https://graph.microsoft.com/v1.0/users'
-        response = requests.get(url, headers=headers)
-        users = response.json()
-        emails = []
-        for user in users.get('value', []):
-            # Imprimir o endereço de e-mail do usuário
-            emails.append(user.get('mail', 'No email found'))
-    else:
-        print(result.get("error"))
-        print(result.get("error_description"))
-    
-
-    #st.sidebar.error('EM MANUTENÇÃO, AGUARDE...')
-    #emails = ['rodrigo@hygge.eco.br']
-
-    if 'AgendadoMatheus@hygge.eco.br' in emails:
-        emails.remove('AgendadoMatheus@hygge.eco.br')
-    if 'FabricioHygge@hygge.eco.br' in emails:
-        emails.remove('FabricioHygge@hygge.eco.br')
-    if 'ThiagoHygge@hygge.eco.br' in emails:
-        emails.remove('ThiagoHygge@hygge.eco.br')
-
-    #st.sidebar.error('🚨 EM MANUTENÇÃO!')
-    
-    email_principal = st.sidebar.selectbox("Email", emails)
-    #email_principal = st.sidebar.selectbox("Email", ['admin@hygge.eco.br', 'rodrigo@hygge.eco.br'])
-    senha_principal = st.sidebar.text_input("Senha", type="password")
-    
-    # If the user is not logged in, show the login button and login process
-    if st.sidebar.button('Entrar'):
-        try:
-            server = smtplib.SMTP('smtp.office365.com', 587)
-            server.starttls()
-            server.login(email_principal, senha_principal)
-            st.sidebar.success("Login realizado com sucesso!")
-            
-            # Update the session state to logged in
-            st.session_state['logado'] = True
-            st.session_state['email'] = email_principal
-            st.session_state['senha'] = senha_principal
-            
-            # ─────────────────────────────────────────────────────────────
-            # Query your "usuarios" collection to map the email to a user
-            # ─────────────────────────────────────────────────────────────
-            user_data = collection_usuarios.find_one({"email": email_principal})
-            if user_data:
-                # e.g., user_data might contain { "username": "...", "name": "Rodrigo", "roles": ["admin"] }
-                st.session_state["name"] = user_data.get("nome", "Sem Nome")
-                st.session_state["lastname"] = user_data.get("sobrenome", "Sem sobreome")
-                st.session_state["roles"] = user_data.get("hierarquia", "viewer")
-                st.session_state["email"] = user_data.get("email", "Sem Email")
-            else:
-                # If no document found, set defaults
-                st.session_state["name"] = "Usuário Desconhecido"
-                st.session_state["lastname"] = "--"
-                st.session_state["roles"] = "viewer"
-                st.session_state["email"] = email_principal
-
-        except Exception as e:
-            st.sidebar.error("Falha no login, senha incorreta.")
+if not st.experimental_user.is_logged_in:
+    if st.sidebar.button("Fazer login com a Microsoft", use_container_width=True):
+        st.login("microsoft")
 
 # This part is executed if the user is logged in - LOGIN DO USUÁRIO
-if st.session_state.get('logado', False):
+if st.experimental_user.is_logged_in:
+    email_logado = st.experimental_user.email
+    permission_admin = '@hygge.eco.br' in email_logado and not 'comercial' in email_logado or 'matheus' in email_logado
+    
     with st.sidebar:
-        if 'admin' in st.session_state["roles"]: 
-            st.info(f'Bem-vindo(a), **{st.session_state["name"]}**!')
+        if permission_admin: 
+            st.info(f'Bem-vindo(a), **{st.experimental_user.name}**!')
             st.info('Este é o ambiente de **admin** para consulta, preenchimento, controle e envio das informações referentes as oportunidades da HYGGE.')
-
+            
             # 1. as sidebar menu
             selected = option_menu(
                 f"CRM HYGGE (Admin)",
@@ -183,9 +94,9 @@ if st.session_state.get('logado', False):
                 },
             )
         else:     
-            st.info(f'Bem-vindo(a), **{st.session_state["name"]}**!')
+            st.info(f'Bem-vindo(a), **{st.experimental_user.name}**!')
             st.info('Este é o ambiente de **vendedor** para consulta, preenchimento, controle e envio das informações referentes as oportunidades da HYGGE.')
-
+            
             # 1. as sidebar menu
             selected = option_menu(
                 f"CRM HYGGE (Vendedor)",
@@ -200,20 +111,24 @@ if st.session_state.get('logado', False):
                     "nav-link-selected": {"font-size": "12px"},  # Style for the selected link
                 },
             )
-    usuario_ativo = f'{st.session_state["name"]} {st.session_state["lastname"]}'
-    data, columns, options = sl.slickgrid_empresa(empresas, contatos, contatos_map)
+        if st.button("Logout", use_container_width=True):
+            st.logout()
+
+if st.experimental_user.is_logged_in:
+    usuario_ativo = st.experimental_user.name
+    data, columns, options = sl.slickgrid_empresa(empresas, contatos_map)
     if selected == "Home":
         st.title("📜 Tarefas")
         st.info("Acompanhe na tabela abaixo as tarefas relacionadas às suas empresas.")
-        with st.expander("Minhas tarefas", expanded=False):
-            if 'admin' in st.session_state["roles"]: tarefas_lib.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=True)
+        with st.expander("Acompanhamento de tarefas", expanded=False):
+            if permission_admin: tarefas_lib.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=True)
             else: tarefas_lib.gerenciamento_tarefas_por_usuario(usuario_ativo,admin=False)
 
         st.write('----')
         st.title("🏢 Empresas")
         st.info("Pesquise e clique em uma empresa dentre as opções abaixo para consultar mais informações a respeito desta empresa.")
         with st.popover("➕ Cadastrar empresa", use_container_width=True):
-                if 'admin' in st.session_state["roles"]: empresas_lib.cadastrar_empresas(usuario_ativo,admin=True)
+                if permission_admin: empresas_lib.cadastrar_empresas(usuario_ativo,admin=True)
                 else: empresas_lib.cadastrar_empresas(usuario_ativo,admin=False)
         st.write('----')
         out = slickgrid(data, columns, options, key="mygrid", on_click='rerun')
@@ -225,7 +140,7 @@ if st.session_state.get('logado', False):
         if "selected_row" in st.session_state:
             row = st.session_state.selected_row
             item = data[row]
-            tabs = st.tabs(["Informações", "Contatos", "Tarefas", "Atividades", "Negócios", "Orçamentos"])
+            tabs = st.tabs(["Informações", "Contatos", "Tarefas e Atividades", "Negócios", "Orçamentos"])
             empresa_obj = next((empresa for empresa in empresas if empresa.get("razao_social", "") == item["empresa"]), None)
             if not empresa_obj:
                 st.write("Empresa não encontrada.")
@@ -233,55 +148,72 @@ if st.session_state.get('logado', False):
                 empresa_id = empresa_obj["_id"]
 
                 with tabs[0]:
+                    st.header("🏢 Informações da empresa")
+                    st.info("Consulte e edite as informações da empresa (caso seja proprietário ou admin) nos campos abaixo.")
+                    st.write('----')
                     if item.get("infos") is None:
-                        if 'admin' in st.session_state["roles"]:
-                            exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=True)
+                        if permission_admin:
+                            with st.expander("Minhas tarefas", expanded=True):
+                                exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=True)
                         else:
-                            exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=False)
+                            with st.expander("Minhas tarefas", expanded=True):
+                                exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=False)
                     else:
                         st.write("Informações da empresa não disponíveis para linhas detalhadas.")
 
                 with tabs[1]:
-                    if 'admin' in st.session_state["roles"]:
+                    st.header("👥 Contatos da empresa")
+                    st.info("Consulte e edite os contatos da empresa (caso seja proprietário ou admin) nos campos abaixo.")
+                    st.write('----')
+                    if permission_admin:
                         exibir_dados.infos_contatos(contatos_map.get(empresa_id, []), collection_contatos, collection_empresas, usuario_ativo, admin=True)
                     else:
                         exibir_dados.infos_contatos(contatos_map.get(empresa_id, []), collection_contatos, collection_empresas, usuario_ativo, admin=False)
 
                 with tabs[2]:
-                    exibir_dados.infos_tarefas(tarefas_map.get(empresa_id, []), collection_tarefas)
+                    st.header("📝 Tarefas e Atividades da empresa")
+                    st.info("Consulte e edite as tarefas e atividades da empresa (caso seja proprietário ou admin) nos campos abaixo.")
+                    st.write('----')
+                    if permission_admin:
+                        tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=True)
+                    else:
+                        tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=False)
 
                 with tabs[3]:
-                    exibir_dados.infos_atividades(atividades_map.get(empresa_id, []), collection_atividades)
-
-                with tabs[4]:
+                    st.header("💰 Negócios da empresa")
+                    st.info("Consulte e edite os negócios da empresa (caso seja proprietário ou admin) nos campos abaixo.")
+                    st.write('----')
                     tabs_negocios = st.tabs(["Visualizar negócios", "Adicionar negócio", "Editar negócio"])
                     with tabs_negocios[0]:
                         exibir_dados.infos_negocios(oportunidades_map.get(empresa_id, []), collection_negocios)
                     with tabs_negocios[1]:
-                        if 'admin' in st.session_state["roles"]:
+                        if permission_admin:
                             negocios_lib.cadastrar_negocio(empresa_obj["_id"], collection_empresas,collection_usuarios, collection_produtos, collection_oportunidades, collection_atividades, usuario_ativo, admin=True)
                         else:
                             negocios_lib.cadastrar_negocio(empresa_obj["_id"], collection_empresas,collection_usuarios, collection_produtos, collection_oportunidades, collection_atividades, usuario_ativo, admin=False)
                     with tabs_negocios[2]:
-                        if 'admin' in st.session_state["roles"]:
+                        if permission_admin:
                             negocios_lib.editar_negocio(empresa_obj["_id"], collection_oportunidades, collection_empresas,collection_atividades, usuario_ativo, admin=True)
                         else:
                             negocios_lib.editar_negocio(empresa_obj["_id"], collection_oportunidades, collection_empresas,collection_atividades, usuario_ativo, admin=False)
-                with tabs[5]:
-                    tabs_orcamentos = st.tabs(["Visualizar orçamentos", "Adicionar orçamento", "Editar orçamento", "Aceite de orçamento"])
-            
+                with tabs[4]:
+                    st.header("💰 Orçamentos da empresa")
+                    st.info("Consulte e edite os orçamentos da empresa (caso seja proprietário ou admin) nos campos abaixo.")
+                    st.write('----')
+                    orcamentos_lib.gerar_orcamento(empresa_obj["_id"], collection_oportunidades, collection_empresas, collection_produtos, collection_contatos, usuario_ativo, permission_admin, st.experimental_user.email)
+    
     elif selected == 'Negócios':
         st.header("💰 Negócios")
         #st.info('Consulte, cadastre e edite os seus negócios aqui.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: negocios_lib.gerenciamento_oportunidades(usuario_ativo, admin=True)
+        if permission_admin: negocios_lib.gerenciamento_oportunidades(usuario_ativo, admin=True)
         else: negocios_lib.gerenciamento_oportunidades(usuario_ativo, admin=False)
         
     elif selected == 'Templates':
         st.header("📎 Templates")
         #st.info('Consulte, cadastre e edite os templates da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: templates_lib.gerenciamento_templates()
+        if permission_admin: templates_lib.gerenciamento_templates()
         else: st.warning("Você não tem permissão para alterar templates.")
 
 
@@ -289,26 +221,19 @@ if st.session_state.get('logado', False):
         st.header("📚 Produtos")
         #st.info('Consulte, cadastre e edite os produtos da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: produtos_lib.gerenciamento_produtos()
+        if permission_admin: produtos_lib.gerenciamento_produtos()
         else: st.warning("Você não tem permissão para alterar produtos.")
 
     elif selected == 'Usuários':
         st.header("🧑‍💻 Usuários")
         #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: usuarios_lib.gerenciamento_usuarios()
+        if permission_admin: usuarios_lib.gerenciamento_usuarios()
         else: st.warning("Você não tem permissão para alterar usuários.")
     
     elif selected == 'Solicitações':
         st.header("✅ Solicitação de aprovação")
         #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
         st.write('----')
-        if 'admin' in st.session_state["roles"]: aprovacoes_lib.gerenciamento_aprovacoes()
+        if permission_admin: aprovacoes_lib.gerenciamento_aprovacoes()
         else: st.warning("Você não tem permissão para aprovar solicitações.")
-    
-    elif selected == 'Aceites':
-        st.header("✒️ Aceite de propostas")
-        #st.info('Consulte, cadastre e edite os usuários da HYGGE.')
-        st.write('----')
-        if 'admin' in st.session_state["roles"]: orcamentos_lib.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=True)
-        else: orcamentos_lib.gerenciamento_aceites(usuario_ativo, st.session_state['email'], st.session_state['senha'], admin=False)

@@ -4,10 +4,7 @@ from streamlit_slickgrid import (
     ExportServices,
 )
 
-def slickgrid_empresa(empresas, contatos, contatos_map):
-    dataset = []
-
-    # Monta o dataset final associando as informações já agrupadas
+def slickgrid_empresa(empresas, contatos_map):
     dataset = []
     eid = 0
     for empresa in empresas:
@@ -25,22 +22,16 @@ def slickgrid_empresa(empresas, contatos, contatos_map):
             "id": eid,
             "empresa": empresa_nome,
             "contatos": contatos_list if contatos_list else None,
+            "vendedor": empresa.get("proprietario", ""),
+            "produtos": empresa.get("produto_interesse", ""),
             "__parent": None,
             "__depth": 0,
             "title": empresa_nome,
         })
         eid += 1
-        
-    # Para testes, use o dataset completo ou uma parte dele (aqui removemos o slicing)
-    data = dataset
-    #st.write(data)
 
-    # Declare SlickGrid columns.
-    #
-    # See full list of options at:
-    # - https://github.com/ghiscoding/slickgrid-universal/blob/master/packages/common/src/interfaces/column.interface.ts#L40
-    #
-    # Not all column options are supported, though!
+    data = dataset
+
     columns = [
         {
             "id": "title",
@@ -53,7 +44,7 @@ def slickgrid_empresa(empresas, contatos, contatos_map):
             "formatter": Formatters.tree,
             "exportCustomFormatter": Formatters.treeExport,
         },
-         {
+        {
             "id": "contatos",
             "name": "Contatos associados",
             "field": "contatos",
@@ -63,7 +54,26 @@ def slickgrid_empresa(empresas, contatos, contatos_map):
             "filterable": True,
             "formatter": Formatters.tree,
             "exportCustomFormatter": Formatters.treeExport,
-        }
+        },
+        {
+            "id": "vendedor",
+            "name": "Vendedor",
+            "field": "vendedor",
+            "sortable": True,
+            "minWidth": 50,
+            "type": FieldType.string,
+            "filterable": True,
+        },
+        {
+            "id": "produtos",
+            "name": "Lista de Produtos de Interesse",
+            "field": "produtos",
+            "sortable": True,
+            "minWidth": 50,
+            "type": FieldType.string,
+            "filterable": True,
+        },
+
     ]
 
     options = {

@@ -186,7 +186,7 @@ def infos_contatos(contatos, collection_contatos, collection_empresas, user, adm
             else:
                 st.info("Nenhuma alteração realizada.")
 
-def infos_tarefas(tarefas, collection_tarefas, collection_empresas, collection_usuarios, user, admin):
+def infos_tarefas(tarefas, user, admin):
     
     if tarefas:
         empresa_id = tarefas[0].get("empresa_id")
@@ -194,71 +194,6 @@ def infos_tarefas(tarefas, collection_tarefas, collection_empresas, collection_u
     if not tarefas:
         st.info("Nenhuma tarefa encontrada.")
         return
-
-def infos_atividades(atividades, collection_atividades):
-    if not atividades:
-        st.info("Nenhuma atividade encontrada.")
-        return
-
-    # Ordena as atividades da mais recente para a mais antiga.
-    def parse_date(atividade):
-        data_str = atividade.get("data_execucao_atividade", "")
-        try:
-            return datetime.datetime.strptime(data_str, "%Y-%m-%d")
-        except Exception:
-            return datetime.datetime.min  # Atividades sem data ficam no final.
-
-    sorted_atividades = sorted(atividades, key=parse_date, reverse=True)
-
-    # Mapeamento dos meses em português.
-    meses_pt = {
-        1: "Janeiro", 2: "Fevereiro", 3: "Março", 4: "Abril", 5: "Maio", 6: "Junho",
-        7: "Julho", 8: "Agosto", 9: "Setembro", 10: "Outubro", 11: "Novembro", 12: "Dezembro"
-    }
-
-    # Agrupa atividades por ano e mês.
-    grupos = {}
-    for atividade in sorted_atividades:
-        data_str = atividade.get("data_execucao_atividade", "")
-        try:
-            dt = datetime.datetime.strptime(data_str, "%Y-%m-%d")
-            chave = (dt.year, dt.month)
-        except Exception:
-            chave = ("Data não informada", None)
-        grupos.setdefault(chave, []).append(atividade)
-
-    # Ordena e exibe os grupos da mais recente para a mais antiga.
-    chaves_ordenadas = sorted(
-        grupos.keys(),
-        key=lambda k: (k[0] if isinstance(k[0], int) else -1, k[1] if k[1] is not None else -1),
-        reverse=True
-    )
-
-    for chave in chaves_ordenadas:
-        if chave[0] == "Data não informada":
-            header = "Data não informada"
-        else:
-            ano, mes = chave
-            mes_str = meses_pt.get(mes, "Mês não informado")
-            header = f"**{mes_str} de {ano}**"
-
-        with st.expander(header):
-            for atividade in grupos[chave]:
-                data_exec = atividade.get("data_execucao_atividade", "Data não informada")
-                descricao = atividade.get("descricao", "Descrição não informada")
-                tipo = atividade.get("tipo_atividade", "Tipo não informado")
-                status = atividade.get("status", "Não informado")
-                atividade_id = atividade.get('_id', '')
-
-                col1, col2, col3, col4 = st.columns([1, 7, 1, 1])
-                with col1:
-                    st.text_input("Tipo", value=tipo, disabled=True, key=f"atividade_tipo_{atividade_id}")
-                with col2:
-                    st.text_input("Descrição", value=descricao, disabled=True, key=f"atividade_descricao_{atividade_id}")
-                with col3:
-                    st.text_input("Status", value=status, disabled=True, key=f"atividade_status_{atividade_id}")
-                with col4:
-                    st.text_input("Data de Execução", value=data_exec, disabled=True, key=f"atividade_data_exec_{atividade_id}")
 
 def infos_negocios(negocios, collection_negocios):
     if not negocios:

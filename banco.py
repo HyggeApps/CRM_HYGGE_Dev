@@ -5,3 +5,4 @@ import utils.database as db
 collection_empresas = db.get_collection("empresas")
 
 # Se dentre as opções de produto_interesse houver 'NBR Fast' duplicado, remover uma das opções
+

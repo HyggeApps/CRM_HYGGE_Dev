@@ -12,6 +12,7 @@ from modules import (
     usuarios as usuarios_lib,
     empresas as empresas_lib,
     tarefas as tarefas_lib,
+    atividades as atividades_lib,
     meus_numeros as meus_numeros_lib,
     contatos as contatos_lib,
     templates as templates_lib,
@@ -185,10 +186,19 @@ if st.experimental_user.is_logged_in:
                     st.header("📝 Tarefas e Atividades da empresa")
                     st.info("Consulte e edite as tarefas e atividades da empresa (caso seja proprietário ou admin) nos campos abaixo.")
                     st.write('----')
+                                 
                     if permission_admin:
+                        st.subheader("Tarefas")
                         tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=True)
+                        st.write('----')
+                        st.subheader("Atividades")
+                        atividades_lib.exibir_atividades_empresa(usuario_ativo, admin=True, empresa_id=empresa_id)
                     else:
+                        st.subheader("Tarefas")
                         tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=False)
+                        st.write('----')
+                        st.subheader("Atividades")
+                        atividades_lib.exibir_atividades_empresa(usuario_ativo, admin=False, empresa_id=empresa_id)
 
                 with tabs[3]:
                     st.header("💰 Negócios da empresa")

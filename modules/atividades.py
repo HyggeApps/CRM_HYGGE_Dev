@@ -91,7 +91,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 st.info(info_msg)
                 
                 # Campo comum para seleção de contatos
-                contato = st.multiselect("Contato Vinculado", lista_contatos)
+                contato = st.multiselect("Contato Vinculado *", lista_contatos)
                 
                 # Se houver campos extras, eles podem ser adicionados aqui
                 extra_fields = extra_fields_fn() if extra_fields_fn is not None else {}
@@ -116,7 +116,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 submit_atividade = st.form_submit_button("✅ Adicionar Atividade")
                 
                 if submit_atividade:
-                    if descricao:
+                    if (descricao and contato and tipo != 'Observação') or (descricao and tipo == 'Observação'):
                         atividade_id = str(datetime.now().timestamp())
                         nova_atividade = {
                             "atividade_id": atividade_id,
@@ -163,14 +163,14 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                         st.success("Atividade adicionada com sucesso! 📌")
                         st.rerun()
                     else:
-                        st.error("Preencha os campos obrigatórios: Descrição.")
+                        st.error("Preencha os campos obrigatórios: Descrição e contato* (*exceto para Observação).")
 
         # Exemplos de chamadas dos formulários usando a função genérica
 
         col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
-            with st.popover("🟫➕ Obs."):
+            with st.popover("🟫➕ Observação", use_container_width=True):
                 criar_form_atividade(
                     key="form_adicionar_observacoes",
                     tipo="Observação",
@@ -179,7 +179,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 )
 
         with col2:
-            with st.popover("🟩➕ Whatsapp"):
+            with st.popover("🟩➕ Whatsapp", use_container_width=True):
                 criar_form_atividade(
                     key="form_adicionar_whatsapp",
                     tipo="Whatsapp",
@@ -189,7 +189,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 )
 
         with col3:
-            with st.popover("🟨➕ Ligação"):
+            with st.popover("🟨➕ Ligação", use_container_width=True):
                 criar_form_atividade(
                     key="form_adicionar_ligacao",
                     tipo="Ligação",
@@ -200,7 +200,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 )
 
         with col4:
-            with st.popover("🟥➕ Email"):
+            with st.popover("🟥➕ Email", use_container_width=True):
                 criar_form_atividade(
                     key="form_adicionar_email",
                     tipo="Email",
@@ -209,7 +209,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 )
 
         with col5:
-            with st.popover("🟦➕ Linkedin"):
+            with st.popover("🟦➕ Linkedin", use_container_width=True):
                 criar_form_atividade(
                     key="form_adicionar_linkedin",
                     tipo="Linkedin",
@@ -218,7 +218,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 )
 
         with col6:
-            with st.popover("🟪➕ Reunião"):
+            with st.popover("🟪➕ Reunião", use_container_width=True):
                 st.header('🟪➕ Registro de reunião')
                 criar_form_atividade(
                     key="form_adicionar_reuniao",

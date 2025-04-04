@@ -49,14 +49,20 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
             disabled=not editable,
             key="empresa_uf"
         )
-        ultima_atividade = st.text_input("Última Atividade", 
-                                         value=empresa_obj.get("ultima_atividade", ""), 
-                                         disabled=not editable, 
-                                         key="empresa_ultima_atividade")
         site = st.text_input("Site", 
                              value=empresa_obj.get("site", ""), 
                              disabled=not editable, 
                              key="empresa_site")
+        
+        options = ["", "Ativa", "Inativa"]
+        atividade_val = empresa_obj.get("empresa_ativa", "")
+        default_index = options.index(atividade_val) if atividade_val in options else 0
+        atividade_empresa = st.selectbox("Empresa ativa?",
+                          options=options,
+                          index=default_index,
+                          disabled=not editable,
+                          key="empresa_atividade_empresa")
+                                        
         
     with col2:
         data_criacao = st.text_input("Data de Criação", 
@@ -117,15 +123,12 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                             value=empresa_obj.get("cep", ""), 
                             disabled=not editable, 
                             key="empresa_cep")
-        options = ["", "Ativa", "Inativa"]
-        atividade_val = empresa_obj.get("empresa_ativa", "")
-        default_index = options.index(atividade_val) if atividade_val in options else 0
-        atividade_empresa = st.selectbox("Empresa ativa?",
-                          options=options,
-                          index=default_index,
-                          disabled=not editable,
-                          key="empresa_atividade_empresa")
-                                        
+        
+        data_ultima_atividade = st.text_input("Data da Última Atividade",
+                                              value=empresa_obj.get("ultima_atividade", ""), 
+                                              disabled=True, 
+                                              key="empresa_ultima_atividade")
+
 
     if editable:
         if st.button("Salvar alterações", key="empresa_salvar_alteracoes"):
@@ -134,7 +137,7 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                 "proprietario": proprietario,
                 "cidade": cidade,
                 "uf": uf,
-                "ultima_atividade": ultima_atividade,
+                "ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d"),
                 "site": site,
                 "data_criacao": data_criacao,
                 "setor": setor,
@@ -151,6 +154,7 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                 st.success("Empresa atualizada com sucesso.")
             else:
                 st.info("Nenhuma alteração realizada.")
+            st.rerun()
 
 def infos_contatos(contatos, collection_contatos, collection_empresas, user, admin):
     if not contatos:

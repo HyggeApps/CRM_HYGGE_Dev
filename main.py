@@ -24,6 +24,7 @@ import modules.css_adicionais as css_adicionais
 import modules.slickgrids as sl
 import utils.functions as funcs
 from streamlit_option_menu import option_menu
+from bson import ObjectId
 css_adicionais.page_config()
 
 collection_empresas = db.get_collection("empresas")
@@ -116,6 +117,17 @@ if st.experimental_user.is_logged_in:
 
 if st.experimental_user.is_logged_in:
     usuario_ativo = st.experimental_user.name
+    # informações da empresa razao social "Teste"
+    collection_empresas = db.get_collection("empresas")
+    
+    empresa_Teste = collection_empresas.find_one({"razao_social": "Teste"})
+    collection_contatos = db.get_collection("contatos")
+    st.write(empresa_Teste)
+    # Cria mapeamentos para acesso rápido
+    contatos_map = {}
+    for contato in contatos:
+        contatos_map.setdefault(contato["empresa_id"], []).append(contato)
+
     data, columns, options = sl.slickgrid_empresa(empresas, contatos_map)
     if selected == "Home":
         st.title("📜 Tarefas")

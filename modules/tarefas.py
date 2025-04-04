@@ -82,8 +82,52 @@ def gerenciamento_tarefas(user, empresa_id, admin):
     collection_empresas = get_collection("empresas")
     empresa = collection_empresas.find_one({"_id": empresa_id}, {"proprietario": 1})
 
-    # 📌 Listagem das tarefas existentes
-    if tarefas:
+    if not tarefas:
+        if admin or (empresa and user == empresa.get("proprietario")):
+            with st.popover('➕ Criar Tarefa'):
+                with st.form("form_criar_tarefa"):
+                    st.subheader("➕ Nova Tarefa")
+
+                    titulo = st.text_input("Título da Tarefa *")
+                    
+                    prazo = st.selectbox("Prazo", ["Hoje", "1 dia útil", "2 dias úteis", "3 dias úteis", "1 semana", "2 semanas", "1 mês", "2 meses", "3 meses"], index=3)
+                    
+                    data_execucao = st.date_input("Data de Execução", value=calcular_data_execucao(prazo)) if prazo == "Personalizada" else calcular_data_execucao(prazo)
+                    hoje = datetime.today().date()
+                    status = "🟨 Em andamento"
+                    observacoes = st.text_area("Observações da Tarefa")
+
+                    submit_criar = st.form_submit_button("✅ Criar Tarefa")
+
+                if submit_criar:
+                    random_hex = f"{random.randint(0, 0xFFFF):04x}"
+                    if titulo:
+                        nova_tarefa = {
+                            "titulo": f"{titulo} ({nome_empresa} - {random_hex})",
+                            "empresa": nome_empresa,
+                            "data_execucao": data_execucao.strftime("%Y-%m-%d"),
+                            "observacoes": observacoes,
+                            "status": status,
+                            "hexa": random_hex,
+                            "empresa_id": empresa_id,
+                        }
+                        collection_tarefas.insert_one(nova_tarefa)
+                        
+                        # 🔄 Atualizar a última atividade da empresa
+                        data_hoje = datetime.now().strftime("%Y-%m-%d")  # Data atual
+                        collection_empresas = get_collection("empresas")
+                        collection_empresas.update_one(
+                            {"cnpj": nome_empresa},
+                            {"$set": {"ultima_atividade": data_hoje}}
+                        )
+
+                        st.success("Tarefa criada com sucesso!")
+                        st.rerun()
+                        
+                    else:
+                        st.error("Preencha o campo obrigatório: Título da Tarefa.")
+
+    elif tarefas:
         df_tarefas = pd.DataFrame(tarefas)
         df_tarefas = df_tarefas.rename(
             columns={
@@ -328,7 +372,6 @@ def atualizar_tarefas_atrasadas(user):
         {"$set": {"status": "🟥 Atrasado"}}
     )
 
-@st.fragment
 def gerenciamento_tarefas_por_usuario(user, admin):
     collection_tarefas = get_collection("tarefas")
     collection_empresas = get_collection("empresas")
@@ -489,7 +532,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                     column_config=column_config
                 )
 
-                if st.button(f"Salvar alterações - Atrasadas - {titulo}", key=f"save_atrasadas_{titulo}"):
+                if st.button(f"Salvar alterações", key=f"save_atrasadas_{titulo}"):
                     collection = get_collection("tarefas")
                     for idx, row in edited_df_atrasadas.iterrows():
                         # Atualiza apenas se a flag 'Editar' estiver marcada
@@ -502,6 +545,11 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                     nova_data_db = datetime.strptime(row["Data de Execução"], "%d/%m/%Y").strftime("%Y-%m-%d")
                                 original_titulo = hidden_cols_atrasadas.iloc[idx]["original_titulo"]
                                 empresa_id_val = hidden_cols_atrasadas.iloc[idx]["empresa_id"]
+                                # se nova_data_db for depois de hoje, status será "🟨 Em andamento", se não mantém o row["Status"]
+                                if nova_data_db > hoje.strftime("%Y-%m-%d"):
+                                    status = "🟨 Em andamento"
+                                else:
+                                    status = row["Status"]
                                 if row["Status"] == "🟩 Concluída":
                                     nova_atividade = {
                                         "atividade_id": str(datetime.now().timestamp()),
@@ -522,7 +570,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                             "titulo": row["Título"],
                                             "data_execucao": nova_data_db,
                                             "observacoes": row["Observações"],
-                                            "status": row["Status"]
+                                            "status": status
                                         }}
                                     )
                                     st.success(f"Tarefa '{row['Título']}' atualizada com data de conclusão {nova_data_display}!")
@@ -533,7 +581,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                             "titulo": row["Título"],
                                             "data_execucao": nova_data_db,
                                             "observacoes": row["Observações"],
-                                            "status": row["Status"]
+                                            "status": status
                                         }}
                                     )
                                     st.success(f"Tarefa '{row['Título']}' atualizada com sucesso!")
@@ -541,6 +589,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                 st.error(f"Erro ao atualizar a tarefa '{row['Título']}': {e}")
                     else:
                         st.success(f"Nenhuma tarefa atrasada para {titulo} marcada para edição.")
+                    st.rerun()
             else:
                 st.warning("Nenhuma tarefa atrasada para o período selecionado.")
             st.write('---')

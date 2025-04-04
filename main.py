@@ -122,7 +122,6 @@ if st.experimental_user.is_logged_in:
     
     empresa_Teste = collection_empresas.find_one({"razao_social": "Teste"})
     collection_contatos = db.get_collection("contatos")
-    st.write(empresa_Teste)
     # Cria mapeamentos para acesso rápido
     contatos_map = {}
     for contato in contatos:

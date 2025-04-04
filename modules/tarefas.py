@@ -309,7 +309,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                                     data_hoje = datetime.now().strftime("%Y-%m-%d")  # Data atual
                                     collection_empresas = get_collection("empresas")
                                     collection_empresas.update_one(
-                                        {"empresa_id": empresa_id},
+                                        {"_id": empresa_id},
                                         {"$set": {"ultima_atividade": data_hoje}}
                                     )
                                     st.success("Tarefa atualizada com sucesso! 🔄")
@@ -336,6 +336,11 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                             "data_execucao": datetime.today().strftime("%Y-%m-%d")
                         }}
                         )
+                    
+                    collection_empresas.update_one(
+                        {"empresa_id": empresa_id},
+                        {"$set": {"ultima_atividade": data_hoje}}
+                    )
                     st.success("Tarefas concluídas com sucesso!")
                     st.rerun()
     else:
@@ -584,6 +589,10 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                             "status": status
                                         }}
                                     )
+                                    collection_empresas.update_one(
+                                        {"_id": empresa_id_val},
+                                        {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
+                                    )
                                     st.success(f"Tarefa '{row['Título']}' atualizada com sucesso!")
                             except Exception as e:
                                 st.error(f"Erro ao atualizar a tarefa '{row['Título']}': {e}")
@@ -696,6 +705,11 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                             "observacoes": row["Observações"],
                                             "status": row["Status"]
                                         }}
+                                    )
+                                    # atualizar a ultima_)atividade da empresa
+                                    collection_empresas.update_one(
+                                        {"_id": empresa_id_val},
+                                        {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
                                     )
                                     st.success(f"Tarefa '{row['Título']}' atualizada com data de conclusão {nova_data_display}!")
                                     st.rerun()

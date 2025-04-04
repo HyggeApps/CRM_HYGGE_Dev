@@ -195,6 +195,11 @@ def infos_contatos(contatos, collection_contatos, collection_empresas, user, adm
             }
             result = collection_contatos.update_one({"_id": contato_obj["_id"]}, {"$set": updated_data})
             if result.modified_count:
+                # atualizar a ultima_)atividade da empresa
+                collection_empresas.update_one(
+                    {"_id": contato_obj.get("empresa_id")},
+                    {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
+                )
                 st.success("Contato atualizado com sucesso.")
             else:
                 st.info("Nenhuma alteração realizada.")

@@ -157,10 +157,9 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                             data_hoje = datetime.now().strftime("%Y-%m-%d")
                             collection_empresas = get_collection("empresas")
                             collection_empresas.update_one(
-                                {"empresa_id": empresa_id},
+                                {"_id": empresa_id},
                                 {"$set": {"ultima_atividade": data_hoje}}
                             )
-                        
                         st.success("Atividade adicionada com sucesso! 📌")
                         st.rerun()
                     else:

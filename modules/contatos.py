@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from utils.database import get_collection
 import re
+import datetime
 
 @st.fragment
 def exibir_contatos_empresa(user, admin, empresa_id):
@@ -51,7 +52,11 @@ def exibir_contatos_empresa(user, admin, empresa_id):
                             "empresa": nome_empresa,  # O contato pertence APENAS a essa empresa!
                             "empresa_id": empresa_id  # ID da empresa para referência
                         })
-                        
+                        # atualizar a ultima_)atividade da empresa
+                        collection_empresas.update_one(
+                            {"_id": empresa_id},
+                            {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
+                        )
                         st.success("Contato adicionado com sucesso!")
                         st.rerun()                        
 
@@ -105,7 +110,11 @@ def exibir_contatos_empresa(user, admin, empresa_id):
                                         "email": email_edit
                                     }}
                                 )
-                                
+                                # atualizar a ultima_)atividade da empresa
+                                collection_empresas.update_one(
+                                    {"_id": empresa_id},
+                                    {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
+                                )
                                 st.success("Contato atualizado com sucesso!")
                                 st.rerun()
                                 
@@ -114,6 +123,12 @@ def exibir_contatos_empresa(user, admin, empresa_id):
                         collection_contatos.delete_one(
                             {"nome": contato_dados["nome"], "sobrenome": contato_dados["sobrenome"], "empresa_id": empresa_id}
                         )  # Apenas na empresa vinculada
+                        
+                        # atualizar a ultima_)atividade da empresa
+                        collection_empresas.update_one(
+                            {"_id": empresa_id},
+                            {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
+                        )
                         st.success(f"Contato {contato_selecionado} removido com sucesso!")
                         st.rerun()
                         

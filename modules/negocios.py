@@ -259,6 +259,7 @@ def editar_negocio(cliente_id, collection_oportunidades, collection_clientes, co
                 "data_criacao_atividade": datetime.today().strftime("%Y-%m-%d")
             }
             collection_atividades.insert_one(nova_atividade)
+
             st.success("Negócio atualizado com sucesso!")
         else:
             st.warning("Nenhuma alteração foi realizada.")
@@ -283,9 +284,9 @@ def gerenciamento_oportunidades(user, admin):
         # collection_clientes, collection_usuarios, collection_produtos,
         # collection_oportunidades, collection_atividades, user, estagios
         if not admin:
-            clientes = list(collection_clientes.find({"proprietario": user}, {"_id": 0, "razao_social": 1, "cnpj": 1}))
+            clientes = list(collection_clientes.find({"proprietario": user}, {"_id": 1, "razao_social": 1, "cnpj": 1}))
         else: 
-            clientes = list(collection_clientes.find({}, {"_id": 0, "razao_social": 1, "cnpj": 1}))
+            clientes = list(collection_clientes.find({}, {"_id": 1, "razao_social": 1, "cnpj": 1}))
         # Obter todos os usuários e produtos
         usuarios = list(collection_usuarios.find({}, {"_id": 0, "nome": 1, "sobrenome": 1, "email": 1}))
         produtos = list(collection_produtos.find({}, {"_id": 0, "nome": 1, "categoria": 1, "preco": 1, "base_desconto": 1}))
@@ -354,7 +355,11 @@ def gerenciamento_oportunidades(user, admin):
 
                             }
                             collection_oportunidades.insert_one(document)
-            
+                            
+                            collection_clientes.update_one(
+                                {"_id": cliente_selecionado['_id']},
+                                {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
+                            )
                             # Criar uma nova atividade informando que a oportunidade foi cadastrada
                             nova_atividade = {
                                 "atividade_id": str(datetime.now().timestamp()),  
@@ -718,6 +723,12 @@ def gerenciamento_oportunidades(user, admin):
 
                                         # Inserir no banco de atividades
                                         collection_atividades.insert_one(nova_atividade)
+                                        
+                            
+                                        collection_clientes.update_one(
+                                            {"_id": cliente_selecionado['_id']},
+                                            {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
+                                        )
                                         st.success(f"Oportunidade '{novo_nome}' atualizada com sucesso!")
                                     else:
                                         st.warning("Nenhum documento foi atualizado. Verifique se o filtro está correto ou se não houve mudança.")

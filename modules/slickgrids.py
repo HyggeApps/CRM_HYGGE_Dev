@@ -74,7 +74,7 @@ def slickgrid_empresa(empresas, contatos_map):
             "filterable": True,
             "filter": {
                 "model": Filters.slider,
-                "operator": "<=",
+                "operator": ">=",
             },
             "formatter": StreamlitSlickGridFormatters.numberFormatter,
             "params": {
@@ -86,7 +86,7 @@ def slickgrid_empresa(empresas, contatos_map):
                     [1000, red]
                 ],
                 "minDecimal": 0,
-                "maxDecimal": 2,
+                "maxDecimal": 3,
                 "numberSuffix": "d",
             },
         },

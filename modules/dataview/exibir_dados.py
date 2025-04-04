@@ -117,6 +117,15 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                             value=empresa_obj.get("cep", ""), 
                             disabled=not editable, 
                             key="empresa_cep")
+        options = ["", "Ativa", "Inativa"]
+        atividade_val = empresa_obj.get("empresa_ativa", "")
+        default_index = options.index(atividade_val) if atividade_val in options else 0
+        atividade_empresa = st.selectbox("Empresa ativa?",
+                          options=options,
+                          index=default_index,
+                          disabled=not editable,
+                          key="empresa_atividade_empresa")
+                                        
 
     if editable:
         if st.button("Salvar alterações", key="empresa_salvar_alteracoes"):

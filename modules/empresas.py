@@ -114,7 +114,6 @@ def editar_empresa(user, admin):
 
             st.success("Dados da empresa atualizados com sucesso!")
             st.rerun()
-  
 
 @st.fragment            
 def cadastrar_empresas(user, admin):

@@ -541,7 +541,8 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                 st.error(f"Erro ao atualizar a tarefa '{row['Título']}': {e}")
                     else:
                         st.success(f"Nenhuma tarefa atrasada para {titulo} marcada para edição.")
-
+            else:
+                st.warning("Nenhuma tarefa atrasada para o período selecionado.")
             st.write('---')
 
             # Seção de Tarefas em Andamento
@@ -664,7 +665,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                             except Exception as e:
                                 st.error(f"Erro ao atualizar a tarefa '{row['Título']}': {e}")
             else:
-                st.success(f"Nenhuma tarefa em andamento para {titulo}.")
+                st.warning(f"Nenhuma tarefa em andamento para o período selecionado.")
 
 def editar_tarefa_modal(tarefas, key, tipo, user, empresa_id): 
     """

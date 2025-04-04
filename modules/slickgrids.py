@@ -1,8 +1,17 @@
+import datetime
+
 from streamlit_slickgrid import (
     Formatters,
     FieldType,
     ExportServices,
+    Filters,
+    StreamlitSlickGridFormatters
 )
+
+red = "#ff4b4b"
+orange = "#ffa421"
+yellow = "#ffe312"
+green = "#21c354"
 
 def slickgrid_empresa(empresas, contatos_map):
     dataset = []
@@ -18,12 +27,23 @@ def slickgrid_empresa(empresas, contatos_map):
                 full_name = f"{contato_nome} {contato_sobrenome}"
                 contatos_list.append(full_name)
 
+        ua_str = empresa.get("ultima_atividade", "")
+        if ua_str:
+            try:
+                ua_date = datetime.datetime.strptime(ua_str, "%Y-%m-%d").date()
+                today = datetime.date.today()
+                atividade_dias = (today - ua_date).days
+            except Exception:
+                atividade_dias = ""
+        else:
+                atividade_dias = ""
+
         dataset.append({
             "id": eid,
             "empresa": empresa_nome,
             "contatos": contatos_list if contatos_list else None,
             "vendedor": empresa.get("proprietario", ""),
-            "produtos": empresa.get("produto_interesse", ""),
+            "ultima_atividade": atividade_dias,
             "__parent": None,
             "__depth": 0,
             "title": empresa_nome,
@@ -38,11 +58,46 @@ def slickgrid_empresa(empresas, contatos_map):
             "name": "Empresas cadastradas",
             "field": "title",
             "sortable": True,
-            "minWidth": 50,
+            "minWidth": 200,
             "type": FieldType.string,
             "filterable": True,
             "formatter": Formatters.tree,
             "exportCustomFormatter": Formatters.treeExport,
+        },
+        {
+            "id": "ultima_atividade",
+            "name": "Última atividade (dias)",
+            "field": "ultima_atividade",
+            "sortable": True,
+            "minWidth": 50,
+            "type": FieldType.number,
+            "filterable": True,
+            "filter": {
+                "model": Filters.slider,
+                "operator": "<=",
+            },
+            "formatter": StreamlitSlickGridFormatters.numberFormatter,
+            "params": {
+                "colors": [
+                    # [maxValue, foreground, background]
+                    [10, green, None],  # None is the same as leaving out
+                    [30, yellow],
+                    [90, orange],
+                    [1000, red]
+                ],
+                "minDecimal": 0,
+                "maxDecimal": 2,
+                "numberSuffix": "d",
+            },
+        },
+        {
+            "id": "vendedor",
+            "name": "Vendedor",
+            "field": "vendedor",
+            "sortable": True,
+            "minWidth": 50,
+            "type": FieldType.string,
+            "filterable": True,
         },
         {
             "id": "contatos",
@@ -55,24 +110,7 @@ def slickgrid_empresa(empresas, contatos_map):
             "formatter": Formatters.tree,
             "exportCustomFormatter": Formatters.treeExport,
         },
-        {
-            "id": "vendedor",
-            "name": "Vendedor",
-            "field": "vendedor",
-            "sortable": True,
-            "minWidth": 50,
-            "type": FieldType.string,
-            "filterable": True,
-        },
-        {
-            "id": "produtos",
-            "name": "Lista de Produtos de Interesse",
-            "field": "produtos",
-            "sortable": True,
-            "minWidth": 50,
-            "type": FieldType.string,
-            "filterable": True,
-        },
+
 
     ]
 

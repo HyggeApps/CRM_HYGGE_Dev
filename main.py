@@ -153,10 +153,10 @@ if st.experimental_user.is_logged_in:
                     st.write('----')
                     if item.get("infos") is None:
                         if permission_admin:
-                            with st.expander("Minhas tarefas", expanded=True):
+                            with st.expander("Informações da empresa", expanded=True):
                                 exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=True)
                         else:
-                            with st.expander("Minhas tarefas", expanded=True):
+                            with st.expander("Informações da empresa", expanded=True):
                                 exibir_dados.infos_empresa(empresa_obj, collection_empresas, collection_usuarios, usuario_ativo, admin=False)
                     else:
                         st.write("Informações da empresa não disponíveis para linhas detalhadas.")

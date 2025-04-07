@@ -21,3 +21,4 @@ streamlit_echarts
 streamlit_slickgrid
 streamlit-flow-component
 authlib
+pyodbc

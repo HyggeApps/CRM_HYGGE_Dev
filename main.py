@@ -12,7 +12,6 @@ from modules import (
     usuarios as usuarios_lib,
     empresas as empresas_lib,
     tarefas as tarefas_lib,
-    atividades as atividades_lib,
     meus_numeros as meus_numeros_lib,
     contatos as contatos_lib,
     templates as templates_lib,
@@ -28,6 +27,9 @@ from streamlit_option_menu import option_menu
 from bson import ObjectId
 css_adicionais.page_config()
 
+import concurrent.futures
+
+# Prepare collections
 collection_empresas = db.get_collection("empresas")
 collection_contatos = db.get_collection("contatos")
 collection_tarefas = db.get_collection("tarefas")
@@ -39,17 +41,29 @@ collection_oportunidades = db.get_collection("oportunidades")
 collection_cidades = db.get_collection("cidades")
 collection_ufs = db.get_collection("ufs")
 
-# Carrega todas as empresas de uma vez
-empresas = list(collection_empresas.find())
-empresa_ids = [empresa["_id"] for empresa in empresas]
+def get_data():
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        # Buscar empresas primeiro pois os IDs são necessários
+        future_empresas = executor.submit(list, collection_empresas.find())
+        empresas = future_empresas.result()
+        empresa_ids = [empresa["_id"] for empresa in empresas]
+        
+        # Executar as queries em paralelo usando os IDs
+        future_contatos = executor.submit(list, collection_contatos.find({"empresa_id": {"$in": empresa_ids}}))
+        future_tarefas = executor.submit(list, collection_tarefas.find({"empresa_id": {"$in": empresa_ids}}))
+        future_atividades = executor.submit(list, collection_atividades.find({"empresa_id": {"$in": empresa_ids}}))
+        future_oportunidades = executor.submit(list, collection_negocios.find({"empresa_id": {"$in": empresa_ids}}))
+        
+        contatos = future_contatos.result()
+        tarefas = future_tarefas.result()
+        atividades = future_atividades.result()
+        oportunidades = future_oportunidades.result()
+    return empresas, contatos, tarefas, atividades, oportunidades
 
-# Realiza consultas em lote usando "$in" para evitar consultas individuais
-contatos = list(collection_contatos.find({"empresa_id": {"$in": empresa_ids}}))
-tarefas = list(collection_tarefas.find({"empresa_id": {"$in": empresa_ids}}))
-atividades = list(collection_atividades.find({"empresa_id": {"$in": empresa_ids}}))
-oportunidades = list(collection_negocios.find({"empresa_id": {"$in": empresa_ids}}))
+empresas, contatos, tarefas, atividades, oportunidades = get_data()
 
-# Cria mapeamentos para acesso rápido
+# Criar mapeamentos em memória rapidamente
 contatos_map = {}
 for contato in contatos:
     contatos_map.setdefault(contato["empresa_id"], []).append(contato)
@@ -72,9 +86,10 @@ if not st.experimental_user.is_logged_in:
         st.login("microsoft")
 
 # This part is executed if the user is logged in - LOGIN DO USUÁRIO
-if st.experimental_user.is_logged_in and '@hygge.eco.br' in st.experimental_user.email:
+if st.experimental_user.is_logged_in:
     email_logado = st.experimental_user.email
-    permission_admin = '@hygge.eco.br' in email_logado and not ('comercial' in email_logado or 'matheus' in email_logado)
+    permission_admin = '@hygge.eco.br' in email_logado and not 'comercial' in email_logado or 'matheus' in email_logado
+    
     with st.sidebar:
         if permission_admin: 
             st.info(f'Bem-vindo(a), **{st.experimental_user.name}**!')
@@ -115,7 +130,7 @@ if st.experimental_user.is_logged_in and '@hygge.eco.br' in st.experimental_user
         if st.button("Logout", use_container_width=True):
             st.logout()
 
-if st.experimental_user.is_logged_in and '@hygge.eco.br' in st.experimental_user.email:
+if st.experimental_user.is_logged_in:
     usuario_ativo = st.experimental_user.name
     # informações da empresa razao social "Teste"
     collection_empresas = db.get_collection("empresas")
@@ -185,19 +200,10 @@ if st.experimental_user.is_logged_in and '@hygge.eco.br' in st.experimental_user
                     st.header("📝 Tarefas e Atividades da empresa")
                     st.info("Consulte e edite as tarefas e atividades da empresa (caso seja proprietário ou admin) nos campos abaixo.")
                     st.write('----')
-                                 
                     if permission_admin:
-                        st.subheader("Tarefas")
                         tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=True)
-                        st.write('----')
-                        st.subheader("Atividades")
-                        atividades_lib.exibir_atividades_empresa(usuario_ativo, admin=True, empresa_id=empresa_id)
                     else:
-                        st.subheader("Tarefas")
                         tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=False)
-                        st.write('----')
-                        st.subheader("Atividades")
-                        atividades_lib.exibir_atividades_empresa(usuario_ativo, admin=False, empresa_id=empresa_id)
 
                 with tabs[3]:
                     st.header("💰 Negócios da empresa")

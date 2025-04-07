@@ -41,10 +41,10 @@ def calcular_data_execucao(opcao):
     
     return opcoes_prazo.get(opcao, hoje)
 
-@st.fragment
 def exibir_atividades_empresa(user, admin, empresa_id):
     collection_atividades = get_collection("atividades")
     collection_contatos = get_collection("contatos")
+    collection_empresas = get_collection("empresas")
 
     if not empresa_id:
         st.error("Erro: Nenhuma empresa selecionada para exibir atividades.")
@@ -54,7 +54,8 @@ def exibir_atividades_empresa(user, admin, empresa_id):
     contatos_vinculados = list(collection_contatos.find({"empresa_id": empresa_id}, {"_id": 0, "empresa": 1, "nome": 1, "sobrenome": 1, "email": 1}))
     # pega o nome_empresa com base no empresa_id
     nome_empresa = collection_atividades.find_one({"empresa_id": empresa_id}, {"empresa": 1})["empresa"] if collection_atividades.find_one({"empresa_id": empresa_id}, {"empresa": 1}) else None
-    
+    proprietario = collection_empresas.find_one({"_id": empresa_id}, {"proprietario": 1})["proprietario"] if collection_empresas.find_one({"_id": empresa_id}, {"proprietario": 1}) else None
+
     # Criar lista de contatos formatada
     lista_contatos = [""] + [f"{c['nome']} {c['sobrenome']}" for c in contatos_vinculados]
 
@@ -70,7 +71,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
     }
 
     # **Permitir que a atividade seja cadastrada sempre**
-    if admin or (user == st.session_state["empresa_selecionada"]["Vendedor"]):
+    if admin or (user == proprietario):
         def criar_form_atividade(key, tipo, titulo_form, info_msg, titulo_tarefa=None,
                                    with_status=False, status_options=None, extra_fields_fn=None):
             """

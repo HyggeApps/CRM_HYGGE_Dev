@@ -72,10 +72,9 @@ if not st.experimental_user.is_logged_in:
         st.login("microsoft")
 
 # This part is executed if the user is logged in - LOGIN DO USUÁRIO
-if st.experimental_user.is_logged_in:
+if st.experimental_user.is_logged_in and '@hygge.eco.br' in st.experimental_user.email:
     email_logado = st.experimental_user.email
-    permission_admin = '@hygge.eco.br' in email_logado and not 'comercial' in email_logado or 'matheus' in email_logado
-    
+    permission_admin = '@hygge.eco.br' in email_logado and not ('comercial' in email_logado or 'matheus' in email_logado)
     with st.sidebar:
         if permission_admin: 
             st.info(f'Bem-vindo(a), **{st.experimental_user.name}**!')
@@ -116,7 +115,7 @@ if st.experimental_user.is_logged_in:
         if st.button("Logout", use_container_width=True):
             st.logout()
 
-if st.experimental_user.is_logged_in:
+if st.experimental_user.is_logged_in and '@hygge.eco.br' in st.experimental_user.email:
     usuario_ativo = st.experimental_user.name
     # informações da empresa razao social "Teste"
     collection_empresas = db.get_collection("empresas")

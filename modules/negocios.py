@@ -380,12 +380,13 @@ def gerenciamento_oportunidades(user, admin):
                     else:
                         st.error("Preencha todos os campos obrigatórios.")
 
+
+    # Buscar oportunidades no banco
     if not admin:
-        # Buscar oportunidades no banco
         oportunidades = list(
             collection_oportunidades.find(
                 {"proprietario": user},  # <─ ADICIONE ESTA CLÁUSULA PARA FILTRAR
-                {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,
+                {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,"proprietario": 1,
                 "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
             )
         )
@@ -393,17 +394,36 @@ def gerenciamento_oportunidades(user, admin):
             st.warning("Nenhuma oportunidade encontrada.")
             return
     else:
-        # Buscar oportunidades no banco
-        oportunidades = list(
-            collection_oportunidades.find(
-                {},  # <─ ADICIONE ESTA CLÁUSULA PARA FILTRAR
-                {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,
-                "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+        usuarios = list(collection_usuarios.find({}, {"_id": 0, "nome": 1, "sobrenome": 1, "email": 1}))
+        opcoes_usuarios = [f"{u['nome']} {u['sobrenome']}" for u in usuarios]
+        opcoes_usuarios.insert(0, "Todos os usuários")
+        opcoes_usuarios.insert(0, "Meus negócios")
+        usuario_selecionado = st.selectbox("Selecionar usuário", options=opcoes_usuarios, index=0, key="select_usuario")
+        if usuario_selecionado == "Meus negócios":
+            # Filtrar apenas os negócios do usuário logado
+            oportunidades = list(
+                collection_oportunidades.find(
+                    {"proprietario": user},
+                    {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,"proprietario": 1,
+                    "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+                )
             )
-        )
-        if not oportunidades:
-            st.warning("Nenhuma oportunidade encontrada.")
-            return
+        elif usuario_selecionado == "Todos os usuários":
+            oportunidades = list(
+                collection_oportunidades.find(
+                    {},
+                    {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,"proprietario": 1,
+                    "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+                )
+            )
+        else:
+            oportunidades = list(
+                collection_oportunidades.find(
+                    {"proprietario": usuario_selecionado},
+                    {"_id": 0, "cliente": 1, "nome_oportunidade": 1,"valor_orcamento": 1, "valor_estimado": 1,"proprietario": 1,
+                    "data_criacao": 1, "data_fechamento": 1, "estagio": 1, "produtos": 1}
+                )
+            )
     
     df_oportunidades = pd.DataFrame(oportunidades)
     df_oportunidades['data_criacao'] = pd.to_datetime(df_oportunidades['data_criacao'], errors='coerce')
@@ -482,10 +502,15 @@ def gerenciamento_oportunidades(user, admin):
                 if not df_filtrado.empty:
                     for i, (idx, row) in enumerate(df_filtrado.iterrows()):
                         st.subheader(f"{row['nome_oportunidade']}")
+                        
                         if row['valor_orcamento'] != '':
                             st.write(f"**💲 {row['valor_orcamento']}**")
                         else:
                             st.write(f"**💲 {row['valor_estimado']}**")
+                        
+                        
+
+                        st.write(f"Vendedor: **{row['proprietario']}**")
                         
                         if pd.notnull(row["data_criacao"]):
                             data_criacao_str = row["data_criacao"].strftime("%d/%m/%Y")

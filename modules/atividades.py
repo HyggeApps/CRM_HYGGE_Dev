@@ -111,8 +111,8 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                                                     "1 semana", "2 semanas", "1 mês", "2 meses", "3 meses"], index=3)
                     data_execucao_tarefa = st.date_input("Data de Execução", value=calcular_data_execucao(prazo)) if prazo == "Personalizada" else calcular_data_execucao(prazo)
                     prioridade = st.selectbox("Prioridade", ["Baixa", "Média", "Alta"])
+                else: criar_tarefa = False 
                 submit_atividade = st.form_submit_button("✅ Adicionar Atividade")
-                
                 if submit_atividade:
                     if (descricao and contato and tipo != 'Observação') or (descricao and tipo == 'Observação'):
                         atividade_id = str(datetime.now().timestamp())

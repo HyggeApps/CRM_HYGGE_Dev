@@ -45,6 +45,7 @@ def build_map(data_list, key):
         result.setdefault(item[key], []).append(item)
     return result
 
+@st.cache_data(ttl=600, show_spinner=True, allow_output_mutation=True)
 def get_data():
     with concurrent.futures.ThreadPoolExecutor() as executor:
         # Buscar empresas primeiro pois os IDs são necessários

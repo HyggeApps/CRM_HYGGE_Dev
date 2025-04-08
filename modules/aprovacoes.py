@@ -3,6 +3,7 @@ from utils.database import get_collection
 import pandas as pd
 import datetime as dt
 from bson import ObjectId
+from concurrent.futures import ThreadPoolExecutor, wait
 
 @st.fragment
 def gerenciamento_aprovacoes():
@@ -26,7 +27,7 @@ def gerenciamento_aprovacoes():
     # Salvar a lista de _id para usar no update (não será exibido)
     id_mapping = df['_id'].tolist()
     
-    # Converter _id para string (se necessário) e selecionar somente as colunas relevantes
+    # Converter _id para string e selecionar somente as colunas relevantes
     df['_id'] = df['_id'].astype(str)
     df_display = df[['cliente', 'nome_oportunidade', 'proprietario', 'desconto_solicitado', 'aprovacao_gestor']].copy()
     
@@ -44,34 +45,35 @@ def gerenciamento_aprovacoes():
     # Exibir o DataFrame com st.data_editor sem permitir adição de novas linhas
     edited_df = st.data_editor(df_display, num_rows="fixed")
     
+    def process_approval(oportunidade_id_str, row):
+        # Atualiza a oportunidade em uma única operação
+        col_oportunidades.update_one(
+            {"_id": ObjectId(oportunidade_id_str)},
+            {"$set": {
+                "aprovacao_gestor": True,
+                "solicitacao_desconto": False,
+                "desconto_aprovado": row['Desconto Solicitado']
+            }}
+        )
+        # Registra a aprovação na coleção 'aprovacoes'
+        aprovacao = {
+            "oportunidade_id": oportunidade_id_str,
+            "empresa": row['Empresa'],
+            "nome_oportunidade": row['Negócio'],
+            "vendedor": row['Vendedor'],
+            "desconto_solicitado": row['Desconto Solicitado'],
+            "aprovado_por": "gestor",  # Personalize para capturar o usuário logado
+            "data_aprovacao": dt.datetime.now()
+        }
+        col_aprovacoes.insert_one(aprovacao)
+    
     if st.button("Salvar Aprovações"):
-        # Iterar pelas linhas do DataFrame editado
-        for idx in range(len(edited_df)):
-            # Se o campo de aprovação foi marcado (True) na edição, atualiza a oportunidade e registra a aprovação
-            if edited_df.iloc[idx]['Aprovação do Gestor'] == True:
-                oportunidade_id_str = id_mapping[idx]
-                # Atualiza a oportunidade para aprovar o desconto
-                col_oportunidades.update_one(
-                    {"_id": ObjectId(oportunidade_id_str)},
-                    {"$set": {"aprovacao_gestor": True}}
-                )
-                col_oportunidades.update_one(
-                    {"_id": ObjectId(oportunidade_id_str)},
-                    {"$set": {"solicitacao_desconto": False}}
-                )
-                col_oportunidades.update_one(
-                    {"_id": ObjectId(oportunidade_id_str)},
-                    {"$set": {"desconto_aprovado": col_oportunidades.find_one({"_id": ObjectId(oportunidade_id_str)})['desconto_solicitado']}}
-                )
-                # Insere o registro de aprovação na coleção 'aprovacoes'
-                aprovacao = {
-                    "oportunidade_id": oportunidade_id_str,
-                    "empresa": edited_df.iloc[idx]['Empresa'],
-                    "nome_oportunidade": edited_df.iloc[idx]['Negócio'],
-                    "vendedor": edited_df.iloc[idx]['Vendedor'],
-                    "desconto_solicitado": edited_df.iloc[idx]['Desconto Solicitado'],
-                    "aprovado_por": "gestor",  # Personalize para capturar o usuário logado
-                    "data_aprovacao": dt.datetime.now()
-                }
-                col_aprovacoes.insert_one(aprovacao)
+        tasks = []
+        with ThreadPoolExecutor() as executor:
+            for idx in range(len(edited_df)):
+                if edited_df.iloc[idx]['Aprovação do Gestor'] == True:
+                    oportunidade_id_str = id_mapping[idx]
+                    row = edited_df.iloc[idx]
+                    tasks.append(executor.submit(process_approval, oportunidade_id_str, row))
+            wait(tasks)
         st.success("Aprovações salvas com sucesso!")

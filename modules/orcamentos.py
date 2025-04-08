@@ -731,7 +731,7 @@ def gerar_orcamento(empresa_id, collection_oportunidades, collection_empresas, c
     # 2. Seleção do Negócio (Oportunidade) vinculado à empresa selecionada
     oportunidades = list(
         collection_oportunidades.find(
-            {"cliente": empresa_nome},
+            {"empresa_id": empresa_id},
             {"_id": 1, "cliente": 1, "nome_oportunidade": 1, "proprietario": 1, "produtos": 1, "valor_estimado": 1,"valor_orcamento": 1, "data_criacao": 1, "data_fechamento": 1, "estagio": 1, 'aprovacao_gestor': 1, 'solicitacao_desconto': 1, 'desconto_solicitado': 1, 'desconto_aprovado': 1, 'contatos_selecionados': 1, 'contato_principal': 1, 'condicoes_pagamento': 1, 'prazo_execucao': 1, 'categoria': 1, 'tipo': 1, 'tamanho': 1, 'desconto_aplicado': 1, 'desconto_aprovado': 1}
         )
     )
@@ -1061,7 +1061,7 @@ def gerar_orcamento(empresa_id, collection_oportunidades, collection_empresas, c
                     # 2. Seleção dos Contatos da Empresa (pode ser múltiplo)
                     contatos = list(
                         collection_contatos.find(
-                            {"empresa": empresa_nome},
+                            {"empresa_id": empresa_id},
                             {"_id": 0, "nome": 1, "email": 1, "sobrenome": 1}  # Incluindo sobrenome para contato principal
                         )
                     )

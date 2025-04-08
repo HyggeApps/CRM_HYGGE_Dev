@@ -1,5 +1,7 @@
 import streamlit as st
 import datetime
+import concurrent.futures
+
 import utils.database as db
 import modules.tarefas as tarefas_module
 
@@ -7,12 +9,16 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
     # Permite edição se o user for o proprietário da empresa ou se for admin
     editable = admin or (empresa_obj.get("proprietario", "") == user)
 
+    # Obtém coleções
     collection_cidades = db.get_collection("cidades")
     collection_ufs = db.get_collection("ufs")
-    cidades_options = sorted(collection_cidades.distinct("cidade"))
-    ufs_options = sorted(collection_ufs.distinct("uf"))
-    cidades_options = [""] + cidades_options
-    ufs_options = [""] + ufs_options
+
+    # Busca os dados em paralelo
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_cidades = executor.submit(lambda: sorted(collection_cidades.distinct("cidade")))
+        future_ufs = executor.submit(lambda: sorted(collection_ufs.distinct("uf")))
+        cidades_options = [""] + future_cidades.result()
+        ufs_options = [""] + future_ufs.result()
 
     razao_social = st.text_input("Razão Social", 
                                   value=empresa_obj.get("razao_social", ""), 
@@ -20,10 +26,11 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                                   key="empresa_razao_social")
     col1, col2, col3 = st.columns(3)
     with col1:
+        # Usuários
         usuarios_options = sorted(
             set(
-            f"{usuario.get('nome', '').strip()} {usuario.get('sobrenome', '').strip()}"
-            for usuario in collection_usuarios.find({})
+                f"{usuario.get('nome', '').strip()} {usuario.get('sobrenome', '').strip()}"
+                for usuario in collection_usuarios.find({})
             )
         )
         usuarios_options = [""] + usuarios_options
@@ -31,7 +38,7 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
             "Proprietário",
             usuarios_options,
             index=usuarios_options.index(empresa_obj.get("proprietario", "")) 
-              if empresa_obj.get("proprietario", "") in usuarios_options else 0,
+                  if empresa_obj.get("proprietario", "") in usuarios_options else 0,
             disabled=not editable,
             key="empresa_proprietario"
         )
@@ -58,20 +65,27 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
         atividade_val = empresa_obj.get("empresa_ativa", "")
         default_index = options.index(atividade_val) if atividade_val in options else 0
         atividade_empresa = st.selectbox("Empresa ativa?",
-                          options=options,
-                          index=default_index,
-                          disabled=not editable,
-                          key="empresa_atividade_empresa")
-                                        
+                                         options=options,
+                                         index=default_index,
+                                         disabled=not editable,
+                                         key="empresa_atividade_empresa")
         
     with col2:
         data_criacao = st.text_input("Data de Criação", 
                                      value=empresa_obj.get("data_criacao", ""), 
                                      disabled=not editable, 
                                      key="empresa_data_criacao")
-        setores_options = sorted(collection_empresas.distinct("setor"))
-        if not "" in setores_options:
-            setores_options = [""] + setores_options
+        # Busca setores e produtos de interesse em paralelo
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future_setores = executor.submit(lambda: sorted(collection_empresas.distinct("setor")))
+            future_produtos = executor.submit(lambda: sorted(collection_empresas.distinct("produto_interesse")))
+            setores_options = future_setores.result()
+            if "" not in setores_options:
+                setores_options = [""] + setores_options
+            produto_interesse_options = future_produtos.result()
+            if "" not in produto_interesse_options:
+                produto_interesse_options = [""] + produto_interesse_options
+
         setor = st.selectbox(
             "Setor",
             setores_options,
@@ -84,7 +98,7 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
             "Grau Cliente",
             grau_cliente_options,
             index=grau_cliente_options.index(empresa_obj.get("grau_cliente", ""))
-              if empresa_obj.get("grau_cliente", "") in grau_cliente_options else 0,
+                  if empresa_obj.get("grau_cliente", "") in grau_cliente_options else 0,
             disabled=not editable,
             key="empresa_grau_cliente"
         )
@@ -96,15 +110,11 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
             disabled=not editable,
             key="empresa_tamanho_empresa"
         )
-
-        produto_interesse_options = sorted(collection_empresas.distinct("produto_interesse"))
-        if "" not in produto_interesse_options:
-            produto_interesse_options = [""] + produto_interesse_options
         produto_interesse = st.multiselect("Produto Interesse",
-                           options=produto_interesse_options,
-                           default=empresa_obj.get("produto_interesse", []),
-                           disabled=not editable,
-                           key="empresa_produto_interesse")
+                                           options=produto_interesse_options,
+                                           default=empresa_obj.get("produto_interesse", []),
+                                           disabled=not editable,
+                                           key="empresa_produto_interesse")
         
     with col3:
         pais = st.text_input("País", 
@@ -123,12 +133,10 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                             value=empresa_obj.get("cep", ""), 
                             disabled=not editable, 
                             key="empresa_cep")
-        
         data_ultima_atividade = st.text_input("Data da Última Atividade",
                                               value=empresa_obj.get("ultima_atividade", ""), 
                                               disabled=True, 
                                               key="empresa_ultima_atividade")
-
 
     if editable:
         if st.button("Salvar alterações", key="empresa_salvar_alteracoes"):
@@ -195,7 +203,7 @@ def infos_contatos(contatos, collection_contatos, collection_empresas, user, adm
             }
             result = collection_contatos.update_one({"_id": contato_obj["_id"]}, {"$set": updated_data})
             if result.modified_count:
-                # atualizar a ultima_)atividade da empresa
+                # Atualiza a última atividade da empresa
                 collection_empresas.update_one(
                     {"_id": contato_obj.get("empresa_id")},
                     {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
@@ -205,11 +213,10 @@ def infos_contatos(contatos, collection_contatos, collection_empresas, user, adm
                 st.info("Nenhuma alteração realizada.")
 
 def infos_tarefas(tarefas, user, admin):
-    
     if tarefas:
         empresa_id = tarefas[0].get("empresa_id")
         tarefas_module.gerenciamento_tarefas(user, admin, empresa_id)
-    if not tarefas:
+    else:
         st.info("Nenhuma tarefa encontrada.")
         return
 

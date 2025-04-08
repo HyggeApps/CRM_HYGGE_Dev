@@ -61,12 +61,18 @@ def gerenciamento_tarefas(user, empresa_id, admin):
         st.error("Erro: Nenhuma empresa selecionada para gerenciar tarefas.")
         return
 
+    # Pega os dados da empresa, incluindo o status "empresa_ativa"
+    empresa_info = collection_empresas.find_one(
+        {"_id": empresa_id},
+        {"_id": 0, "razao_social": 1, "empresa_ativa": 1}
+    )
+    if empresa_info.get("empresa_ativa", "Ativa") == "Inativa":
+        st.info("Empresa inativa. Ignorando tarefas.")
+        return
+    nome_empresa = empresa_info["razao_social"]
+
     # 📌 Verificar e atualizar tarefas atrasadas automaticamente
     tarefas = list(collection_tarefas.find({"empresa_id": empresa_id}, {"_id": 0}))
-    # pega o nome da empresa com base no "empresa_id" via collection_empresas
-    collection_empresas = get_collection("empresas")
-    nome_empresa = collection_empresas.find_one({"_id": empresa_id}, {"_id": 0, "razao_social": 1})
-    nome_empresa = nome_empresa['razao_social']
     hoje = datetime.today().date()
 
     for tarefa in tarefas:
@@ -432,9 +438,16 @@ def gerenciamento_tarefas_por_usuario(user, admin):
 
     hoje = datetime.today().date()
 
-    # 🔹 Buscar todas as tarefas diretamente do banco, filtrando por empresa_id
-    tarefas = list(collection_tarefas.find(
-        {"empresa_id": {"$in": list(empresas_usuario)}},
+    # 🔹 Buscar os _id das empresas ativas (empresa_ativa diferente de "Inativa")
+    active_empresas = [
+        empresa["_id"] for empresa in get_collection("empresas").find(
+            {"_id": {"$in": list(empresas_usuario)}, "empresa_ativa": {"$ne": "Inativa"}},
+            {"_id": 1}
+        )
+    ]
+    # 🔹 Buscar todas as tarefas diretamente do banco, filtrando por empresa_id ativa
+    tarefas = list(get_collection("tarefas").find(
+        {"empresa_id": {"$in": active_empresas}},
         {"_id": 0, "titulo": 1, "empresa_id": 1, "empresa": 1, "data_execucao": 1, "status": 1, "observacoes": 1, "Prioridade": 1, "hexa": 1}
     ))
 

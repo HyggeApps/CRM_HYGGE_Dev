@@ -155,7 +155,8 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                 "pais": pais,
                 "endereco": endereco,
                 "cnpj": cnpj,
-                "cep": cep
+                "cep": cep,
+                "empresa_ativa": atividade_empresa
             }
             result = collection_empresas.update_one({"_id": empresa_obj["_id"]}, {"$set": updated_data})
             if result.modified_count:

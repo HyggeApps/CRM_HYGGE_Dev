@@ -152,7 +152,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
         df_tarefas = df_tarefas.sort_values(by=["StatusOrder", "Data de Execução"], ascending=[True, False]).drop(columns="StatusOrder")
 
         # Reordenar as colunas para colocar "Concluir" como a primeira
-        df_tarefas = df_tarefas[["Concluir", "Status", "Data de Execução", "Título", "Observações"]]
+        df_tarefas = df_tarefas[["Concluir", "Status","Prioridade", "Data de Execução", "Título", "Observações"]]
 
         # Configurar a coluna como checkbox com largura menor
         column_config = {
@@ -182,7 +182,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                         st.subheader("➕ Nova Tarefa")
 
                         titulo = st.text_input("Título da Tarefa *")
-                        
+                        prioridade = st.selectbox("Prioridade", ["Baixa", "Média", "Alta"], index=1)
                         prazo = st.selectbox("Prazo", ["Hoje", "1 dia útil", "2 dias úteis", "3 dias úteis", "1 semana", "2 semanas", "1 mês", "2 meses", "3 meses"], index=3)
                         
                         data_execucao = st.date_input("Data de Execução", value=calcular_data_execucao(prazo)) if prazo == "Personalizada" else calcular_data_execucao(prazo)
@@ -199,6 +199,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                                 "titulo": f"{titulo} ({nome_empresa} - {random_hex})",
                                 "empresa": nome_empresa,
                                 "data_execucao": data_execucao.strftime("%Y-%m-%d"),
+                                "Prioridade": prioridade,
                                 "observacoes": observacoes,
                                 "status": status,
                                 "hexa": random_hex,
@@ -237,12 +238,13 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                         if tarefa_dados:
                             with st.form("form_editar_tarefa",):
                                 st.subheader("✏️ Editar Tarefa")
-
+                                titulo_edit = st.text_input("Título", value=tarefa_dados["titulo"])
+                                    
                                 # Criar duas colunas para organizar os campos
                                 col1, col2 = st.columns(2)
 
                                 with col1:
-                                    titulo_edit = st.text_input("Título", value=tarefa_dados["titulo"])
+                                    prioridade = st.selectbox("Prioridade", ["Baixa", "Média", "Alta"], index=["Baixa", "Média", "Alta"].index(tarefa_dados["Prioridade"]))
                                     prazo_edit = st.selectbox(
                                         "Novo Prazo de Execução",
                                         ["Personalizada", "Hoje", "1 dia útil", "2 dias úteis", "3 dias úteis", "1 semana", "2 semanas", "1 mês", "2 meses", "3 meses"],
@@ -300,6 +302,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                                             {"empresa_id": empresa_id, "titulo": tarefa_selecionada},
                                             {"$set": {
                                                 "titulo": titulo_edit,
+                                                "Prioridade": prioridade,
                                                 "data_execucao": data_execucao_edit.strftime("%Y-%m-%d"),
                                                 "observacoes": observacoes_edit,
                                                 "status": status_edit
@@ -341,7 +344,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                         
                         collection_empresas.update_one(
                             {"empresa_id": empresa_id},
-                            {"$set": {"ultima_atividade": data_hoje}}
+                            {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
                         )
                         st.success("Tarefas concluídas com sucesso!")
                         st.rerun()
@@ -432,7 +435,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
     # 🔹 Buscar todas as tarefas diretamente do banco, filtrando por empresa_id
     tarefas = list(collection_tarefas.find(
         {"empresa_id": {"$in": list(empresas_usuario)}},
-        {"_id": 0, "titulo": 1, "empresa_id": 1, "empresa": 1, "data_execucao": 1, "status": 1, "observacoes": 1}
+        {"_id": 0, "titulo": 1, "empresa_id": 1, "empresa": 1, "data_execucao": 1, "status": 1, "observacoes": 1, "Prioridade": 1, "hexa": 1}
     ))
 
     # 🔹 Criar um dicionário com Nome da Empresa baseado no _id da empresa
@@ -501,18 +504,18 @@ def gerenciamento_tarefas_por_usuario(user, admin):
 
                 # Adicionar coluna de editar com flag False por padrão
                 df_atrasadas["Editar"] = False
-
-                # Reordenar as colunas para que fiquem com a flag 'Editar' como a primeira (mantendo o campo 'empresa_id' para uso oculto)
                 df_atrasadas["original_titulo"] = df_atrasadas["Título"]
+
+                # Reordenar as colunas para que fiquem com a flag 'Editar' e 'Prioridade'
                 if is_todas:
-                    cols = ["Editar", "Status", "Data de Execução", "Título", "Observações", "Nome da Empresa", "Vendedor", "empresa_id", "original_titulo"]
+                    cols = ["Editar", "Status", "Prioridade", "Data de Execução", "Título", "Observações", "Nome da Empresa", "Vendedor", "empresa_id", "original_titulo"]
                 else:
-                    cols = ["Editar", "Status", "Data de Execução", "Título", "Observações", "Nome da Empresa", "empresa_id", "original_titulo"]
+                    cols = ["Editar", "Status", "Prioridade", "Data de Execução", "Título", "Observações", "Nome da Empresa", "empresa_id", "original_titulo"]
                 df_atrasadas = df_atrasadas[[c for c in cols if c in df_atrasadas.columns]]
                 hidden_cols_atrasadas = df_atrasadas[["original_titulo", "empresa_id"]].copy()
                 df_atrasadas_display = df_atrasadas.drop(columns=["original_titulo", "empresa_id"])
 
-                # Configurar as colunas: 'Editar' como checkbox e 'Status' como lista suspensa
+                # Configurar as colunas: 'Editar' como checkbox, 'Status' como selectbox e 'Prioridade' também como selectbox
                 column_config = {
                     "Editar": st.column_config.CheckboxColumn(
                         "Editar",
@@ -522,6 +525,11 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                         "Status",
                         options=["🟥 Atrasado", "🟩 Concluída"],
                         help="Selecione o status"
+                    ),
+                    "Prioridade": st.column_config.SelectboxColumn(
+                        "Prioridade",
+                        options=["Baixa", "Média", "Alta"],
+                        help="Selecione a prioridade"
                     )
                 }
                 if is_todas:
@@ -552,11 +560,8 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                     nova_data_db = datetime.strptime(row["Data de Execução"], "%d/%m/%Y").strftime("%Y-%m-%d")
                                 original_titulo = hidden_cols_atrasadas.iloc[idx]["original_titulo"]
                                 empresa_id_val = hidden_cols_atrasadas.iloc[idx]["empresa_id"]
-                                # se nova_data_db for depois de hoje, status será "🟨 Em andamento", se não mantém o row["Status"]
-                                if nova_data_db > hoje.strftime("%Y-%m-%d"):
-                                    status = "🟨 Em andamento"
-                                else:
-                                    status = row["Status"]
+                                # Se a nova data for depois de hoje, status será "🟨 Em andamento"
+                                status = "🟨 Em andamento" if nova_data_db > hoje.strftime("%Y-%m-%d") else row["Status"]
                                 if row["Status"] == "🟩 Concluída":
                                     nova_atividade = {
                                         "atividade_id": str(datetime.now().timestamp()),
@@ -569,33 +574,18 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                         "data_criacao_atividade": nova_data_db,
                                         "empresa_id": empresa_id_val
                                     }
-                                    collection_atividades = get_collection("atividades")
                                     collection_atividades.insert_one(nova_atividade)
-                                    collection.update_one(
-                                        {"empresa_id": empresa_id_val, "titulo": original_titulo},
-                                        {"$set": {
-                                            "titulo": row["Título"],
-                                            "data_execucao": nova_data_db,
-                                            "observacoes": row["Observações"],
-                                            "status": status
-                                        }}
-                                    )
-                                    st.success(f"Tarefa '{row['Título']}' atualizada com data de conclusão {nova_data_display}!")
-                                else:
-                                    collection.update_one(
-                                        {"empresa_id": empresa_id_val, "titulo": original_titulo},
-                                        {"$set": {
-                                            "titulo": row["Título"],
-                                            "data_execucao": nova_data_db,
-                                            "observacoes": row["Observações"],
-                                            "status": status
-                                        }}
-                                    )
-                                    collection_empresas.update_one(
-                                        {"_id": empresa_id_val},
-                                        {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
-                                    )
-                                    st.success(f"Tarefa '{row['Título']}' atualizada com sucesso!")
+                                collection.update_one(
+                                    {"empresa_id": empresa_id_val, "titulo": original_titulo},
+                                    {"$set": {
+                                        "titulo": row["Título"],
+                                        "data_execucao": nova_data_db,
+                                        "observacoes": row["Observações"],
+                                        "status": status,
+                                        "Prioridade": row["Prioridade"]
+                                    }}
+                                )
+                                st.success(f"Tarefa '{row['Título']}' atualizada com sucesso!")
                             except Exception as e:
                                 st.error(f"Erro ao atualizar a tarefa '{row['Título']}': {e}")
                     else:
@@ -630,16 +620,16 @@ def gerenciamento_tarefas_por_usuario(user, admin):
 
                 df_andamento["original_titulo"] = df_andamento["Título"]
                 if is_todas:
-                    cols = ["Editar", "Status", "Data de Execução", "Título", "Observações", "Nome da Empresa", "Vendedor", "empresa_id", "original_titulo"]
+                    cols = ["Editar", "Status", "Prioridade", "Data de Execução", "Título", "Observações", "Nome da Empresa", "Vendedor", "empresa_id", "original_titulo"]
                 else:
-                    cols = ["Editar", "Status", "Data de Execução", "Título", "Observações", "Nome da Empresa", "empresa_id", "original_titulo"]
+                    cols = ["Editar", "Status", "Prioridade", "Data de Execução", "Título", "Observações", "Nome da Empresa", "empresa_id", "original_titulo"]
                 df_andamento = df_andamento[[c for c in cols if c in df_andamento.columns]]
                 hidden_cols_andamento = df_andamento[["original_titulo", "empresa_id"]].copy()
                 df_andamento_display = df_andamento.drop(columns=["original_titulo", "empresa_id"])
                 if is_todas:
-                    df_andamento_display = df_andamento_display[["Editar", "Status", "Data de Execução", "Título", "Observações", "Nome da Empresa", "Vendedor"]]
+                    df_andamento_display = df_andamento_display[["Editar", "Status", "Prioridade", "Data de Execução", "Título", "Observações", "Nome da Empresa", "Vendedor"]]
                 else:
-                    df_andamento_display = df_andamento_display[["Editar", "Status", "Data de Execução", "Título", "Observações", "Nome da Empresa"]]
+                    df_andamento_display = df_andamento_display[["Editar", "Status", "Prioridade", "Data de Execução", "Título", "Observações", "Nome da Empresa"]]
 
                 column_config = {
                     "Editar": st.column_config.CheckboxColumn(
@@ -650,6 +640,11 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                         "Status",
                         help="Selecione o status",
                         disabled=True
+                    ),
+                    "Prioridade": st.column_config.SelectboxColumn(
+                        "Prioridade",
+                        options=["Baixa", "Média", "Alta"],
+                        help="Selecione a prioridade"
                     ),
                     "Nome da Empresa": st.column_config.TextColumn(
                         "Nome da Empresa",
@@ -697,7 +692,6 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                         "data_criacao_atividade": nova_data_db,
                                         "empresa_id": empresa_id_val
                                     }
-                                    collection_atividades = get_collection("atividades")
                                     collection_atividades.insert_one(nova_atividade)
                                     collection.update_one(
                                         {"empresa_id": empresa_id_val, "titulo": original_titulo},
@@ -705,10 +699,10 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                             "titulo": row["Título"],
                                             "data_execucao": nova_data_db,
                                             "observacoes": row["Observações"],
-                                            "status": row["Status"]
+                                            "status": row["Status"],
+                                            "Prioridade": row["Prioridade"]
                                         }}
                                     )
-                                    # atualizar a ultima_)atividade da empresa
                                     collection_empresas.update_one(
                                         {"_id": empresa_id_val},
                                         {"$set": {"ultima_atividade": datetime.today().strftime("%Y-%m-%d")}}
@@ -722,7 +716,8 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                             "titulo": row["Título"],
                                             "data_execucao": nova_data_db,
                                             "observacoes": row["Observações"],
-                                            "status": row["Status"]
+                                            "status": row["Status"],
+                                            "Prioridade": row["Prioridade"]
                                         }}
                                     )
                                     st.success(f"Tarefa '{row['Título']}' atualizada com sucesso!")

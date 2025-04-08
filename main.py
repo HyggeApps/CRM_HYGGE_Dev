@@ -181,8 +181,10 @@ if st.experimental_user.is_logged_in and "@hygge.eco.br" in st.experimental_user
                     st.header("📝 Tarefas e Atividades da empresa")
                     st.info("Consulte e edite as tarefas e atividades da empresa (caso seja proprietário ou admin) nos campos abaixo.")
                     st.write('----')
+                    st.subheader("Tarefas")
                     tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=permission_admin)
                     st.write('----')
+                    st.subheader("Atividades")
                     atividades_lib.exibir_atividades_empresa(usuario_ativo, admin=permission_admin, empresa_id=empresa_id)
                     st.write('----')
                 with tabs[3]:

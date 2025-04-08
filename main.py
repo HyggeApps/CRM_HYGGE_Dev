@@ -86,7 +86,7 @@ if not st.experimental_user.is_logged_in:
 # Bloco executado para o usuário logado
 if st.experimental_user.is_logged_in and "@hygge.eco.br" in st.experimental_user.email:
     email_logado = st.experimental_user.email
-    permission_admin = 'fabricio' in email_logado or 'alexandre' in email_logado or 'admin' in email_logado
+    permission_admin = 'fabricio' in email_logado or 'alexandre' in email_logado or 'rodrigo' in email_logado or 'admin' in email_logado
     with st.sidebar:
         if permission_admin: 
             st.info(f'Bem-vindo(a), **{st.experimental_user.name}**!')

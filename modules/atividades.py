@@ -218,7 +218,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                     titulo_form="Registro de reunião",
                     info_msg="Registrar uma **reunião** nas atividades da empresa.",
                     with_status=True,
-                    status_options=["Realizada", "Contato não apareceu", "Remarcada"],
+                    status_options=["Marcada", "Realizada", "Contato não apareceu", "Remarcada"],
                     titulo_tarefa="Acompanhar Reunião"
                 )
 

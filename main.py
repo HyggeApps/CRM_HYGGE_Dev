@@ -175,6 +175,7 @@ if st.experimental_user.is_logged_in and "@hygge.eco.br" in st.experimental_user
                     st.header("👥 Contatos da empresa")
                     st.info("Consulte e edite os contatos da empresa (caso seja proprietário ou admin) nos campos abaixo.")
                     st.write('----')
+                    contatos_lib.exibir_contatos_empresa(usuario_ativo, permission_admin, empresa_id)
                     exibir_dados.infos_contatos(contatos_map.get(empresa_id, []), collection_contatos, collection_empresas, usuario_ativo, admin=permission_admin)
 
                 with tabs[2]:

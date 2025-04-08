@@ -20,7 +20,7 @@ def exibir_contatos_empresa(user, admin, empresa_id):
     nome_empresa = empresa["razao_social"] if empresa else "Empresa não encontrada"
 
     # Verifica permissão para adicionar, editar ou remover contatos
-    if admin or (user == st.session_state["empresa_selecionada"]["Vendedor"]):
+    if admin or (user == empresa["proprietario"]):
 
         with st.popover('➕ Adicionar Contato'):
             with st.form("form_adicionar_contato"):
@@ -63,87 +63,6 @@ def exibir_contatos_empresa(user, admin, empresa_id):
                         st.success("Contato adicionado com sucesso!")
                         st.rerun()
                         
-        # Se houver contatos cadastrados, exibir opções de edição/remoção
-        if contatos:
-            with st.popover('✏️ Editar contato'):
-                contato_selecionado = st.selectbox(
-                    "Selecione um contato para editar/remover",
-                    options=[f"{c['nome']} {c['sobrenome']}" for c in contatos]
-                )
-
-                if contato_selecionado:
-                    parts = contato_selecionado.split(" ", 1)
-                    nome_selecionado = parts[0]
-                    sobrenome_selecionado = parts[1] if len(parts) > 1 else ""
-
-                    contato_dados = collection_contatos.find_one(
-                        {"nome": nome_selecionado, "sobrenome": sobrenome_selecionado, "empresa_id": empresa_id},
-                        {"_id": 0}
-                    )
-
-                    if contato_dados:
-                        with st.form("form_editar_contato"):
-                            st.subheader("✏️ Editar Contato")
-                            col1, col2 = st.columns(2)
-
-                            with col1:
-                                nome_edit = st.text_input("Nome", value=contato_dados.get("nome", ""))
-                                cargo_edit = st.text_input("Cargo", value=contato_dados.get("cargo", ""))
-                                telefone_edit = st.text_input("Telefone", value=contato_dados.get("fone", ""))
-                            with col2:
-                                sobrenome_edit = st.text_input("Sobrenome", value=contato_dados.get("sobrenome", ""))
-                                email_edit = st.text_input("E-mail", value=contato_dados.get("email", ""))
-
-                            submit_editar = st.form_submit_button("💾 Salvar Alterações")
-
-                            if submit_editar:
-                                collection_contatos.update_one(
-                                    {"nome": contato_dados["nome"], "sobrenome": contato_dados["sobrenome"], "empresa_id": empresa_id},
-                                    {"$set": {
-                                        "nome": nome_edit,
-                                        "sobrenome": sobrenome_edit,
-                                        "cargo": cargo_edit,
-                                        "fone": telefone_edit,
-                                        "email": email_edit
-                                    }}
-                                )
-                                collection_empresas.update_one(
-                                    {"_id": empresa_id},
-                                    {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
-                                )
-                                st.success("Contato atualizado com sucesso!")
-                                st.rerun()
-                                
-                    if st.button("🗑️ Remover Contato"):
-                        collection_contatos.delete_one(
-                            {"nome": contato_dados["nome"], "sobrenome": contato_dados["sobrenome"], "empresa_id": empresa_id}
-                        )
-                        collection_empresas.update_one(
-                            {"_id": empresa_id},
-                            {"$set": {"ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")}}
-                        )
-                        st.success(f"Contato {contato_selecionado} removido com sucesso!")
-                        st.rerun()
-                        
-    # Atualiza a lista de contatos após alterações
-    contatos = list(collection_contatos.find({"empresa_id": empresa_id}, {"_id": 0}))
-    with st.expander("📞 Contatos cadastrados", expanded=True):
-        if contatos:
-            df_contatos = pd.DataFrame(contatos)
-            df_contatos = df_contatos.rename(
-                columns={
-                    "nome": "Nome",
-                    "sobrenome": "Sobrenome",
-                    "cargo": "Cargo",
-                    "email": "E-mail",
-                    "fone": "Telefone"
-                }
-            )
-            df_contatos = df_contatos[["Nome", "Sobrenome", "Cargo", "E-mail", "Telefone"]]
-            st.dataframe(df_contatos, hide_index=True, use_container_width=True)
-        else:
-            st.warning("Nenhum contato cadastrado para esta empresa.")
-
 @st.fragment
 def exibir_todos_contatos_empresa():
     collection_contatos = get_collection("contatos")

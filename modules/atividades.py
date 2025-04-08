@@ -105,6 +105,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                 descricao = st.text_area("Descrição *")
                 if tipo != 'Observação':
                     st.markdown("---")
+                    criar_tarefa = st.checkbox("Criar tarefa de acompanhamento para a atividade", value=True)
                     st.subheader("📌 Prazo para o acompanhamento")
                     prazo = st.selectbox("Prazo", ["1 dia útil", "2 dias úteis", "3 dias úteis", 
                                                     "1 semana", "2 semanas", "1 mês", "2 meses", "3 meses"], index=3)
@@ -131,28 +132,28 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                         nova_atividade.update(extra_fields)
                         
                         collection_atividades.insert_one(nova_atividade)
-
-                        if tipo != 'Observação':
-                            random_hex = f"{random.randint(0, 0xFFFF):04x}"
-                            nova_tarefa = {
-                                "tarefa_id": str(datetime.now().timestamp()),
-                                "titulo": f"{titulo_tarefa} ({nome_empresa} - {random_hex})" if titulo_tarefa is not None else f"{tipo} ({nome_empresa} - {random_hex})",
-                                "empresa": nome_empresa,
-                                "atividade_vinculada": atividade_id,
-                                "data_execucao": data_execucao_tarefa.strftime("%Y-%m-%d"),
-                                "status": "🟨 Em andamento",
-                                "observacoes": "",
-                                "Prioridade": prioridade,
-                                "empresa_id": empresa_id,
-                            }
-                            collection_tarefas = get_collection("tarefas")
-                            collection_tarefas.insert_one(nova_tarefa)
+                        if criar_tarefa:
+                            if tipo != 'Observação':
+                                random_hex = f"{random.randint(0, 0xFFFF):04x}"
+                                nova_tarefa = {
+                                    "tarefa_id": str(datetime.now().timestamp()),
+                                    "titulo": f"{titulo_tarefa} ({nome_empresa} - {random_hex})" if titulo_tarefa is not None else f"{tipo} ({nome_empresa} - {random_hex})",
+                                    "empresa": nome_empresa,
+                                    "atividade_vinculada": atividade_id,
+                                    "data_execucao": data_execucao_tarefa.strftime("%Y-%m-%d"),
+                                    "status": "🟨 Em andamento",
+                                    "observacoes": "",
+                                    "Prioridade": prioridade,
+                                    "empresa_id": empresa_id,
+                                }
+                                collection_tarefas = get_collection("tarefas")
+                                collection_tarefas.insert_one(nova_tarefa)
                             
-                            data_hoje = datetime.now().strftime("%Y-%m-%d")
-                            collection_empresas.update_one(
-                                {"_id": empresa_id},
-                                {"$set": {"ultima_atividade": data_hoje}}
-                            )
+                        data_hoje = datetime.now().strftime("%Y-%m-%d")
+                        collection_empresas.update_one(
+                            {"_id": empresa_id},
+                            {"$set": {"ultima_atividade": data_hoje}}
+                        )
                         st.success("Atividade adicionada com sucesso! 📌")
                         st.rerun()
                     else:

@@ -575,7 +575,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                                 original_titulo = hidden_cols_atrasadas.iloc[idx]["original_titulo"]
                                 empresa_id_val = hidden_cols_atrasadas.iloc[idx]["empresa_id"]
                                 # Se a nova data for depois de hoje, status será "🟨 Em andamento"
-                                status = "🟨 Em andamento" if nova_data_db > hoje.strftime("%Y-%m-%d") else row["Status"]
+                                status = "🟨 Em andamento" if nova_data_db >= hoje.strftime("%Y-%m-%d") else row["Status"]
                                 if row["Status"] == "🟩 Concluída":
                                     nova_atividade = {
                                         "atividade_id": str(datetime.now().timestamp()),

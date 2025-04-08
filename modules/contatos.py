@@ -13,7 +13,7 @@ def exibir_contatos_empresa(user, admin, empresa_id):
     # Executa as buscas em paralelo
     with ThreadPoolExecutor(max_workers=2) as executor:
         future_contatos = executor.submit(collection_contatos.find, {"empresa_id": empresa_id}, {"_id": 0})
-        future_empresa = executor.submit(collection_empresas.find_one, {"_id": empresa_id}, {"_id": 0, "razao_social": 1})
+        future_empresa = executor.submit(collection_empresas.find_one, {"_id": empresa_id}, {"_id": 0, "razao_social": 1, "proprietario": 1})
         contatos = list(future_contatos.result())
         empresa = future_empresa.result()
     

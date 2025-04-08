@@ -126,6 +126,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                             "data_execucao_atividade": data_execucao.strftime("%Y-%m-%d"),
                             "data_criacao_atividade": datetime.now().strftime("%Y-%m-%d"),
                             "empresa_id": empresa_id,
+                            "status": status_value
                         }
                         if with_status and status_value:
                             nova_atividade["status"] = status_value

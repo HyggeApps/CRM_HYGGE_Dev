@@ -1,5 +1,5 @@
 import datetime
-
+import streamlit as st
 from streamlit_slickgrid import (
     Formatters,
     FieldType,
@@ -26,6 +26,7 @@ def slickgrid_empresa(empresas, contatos_map):
                 contato_sobrenome = contato.get("sobrenome", "")
                 full_name = f"{contato_nome} {contato_sobrenome}"
                 contatos_list.append(full_name)
+
 
         ua_str = empresa.get("ultima_atividade", "")
         if ua_str:
@@ -110,7 +111,6 @@ def slickgrid_empresa(empresas, contatos_map):
             "formatter": Formatters.tree,
             "exportCustomFormatter": Formatters.treeExport,
         },
-
 
     ]
 

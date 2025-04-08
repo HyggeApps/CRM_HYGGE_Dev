@@ -219,32 +219,53 @@ def exibir_todos_contatos_empresa():
         company_list = ["Sem Empresa"]
 
     # Prepara lista de vendedores disponíveis para o dropdown
-    vendedores_docs = list(collection_usuarios.find({"role": "vendedor"}, {"nome": 1, "sobrenome": 1, "_id": 0}))
-    st.write(vendedores_docs)
+    vendedores_docs = list(collection_usuarios.find({}, {"nome": 1, "sobrenome": 1, "_id": 0}))
     vendedores = [v["nome"] + " " + v["sobrenome"] for v in vendedores_docs]
     if not vendedores:
         vendedores = [""]
+    # Adiciona flag de edição se não existir no DataFrame
+    if "Editar" not in df_final.columns:
+        df_final["Editar"] = False
 
-    # Exibe editor com coluna configurada como selectbox para Empresa e Usuário
-    edited_df = st.data_editor(
-        df_final,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Empresa": st.column_config.SelectboxColumn(
-                options=company_list,
-                help="Selecione a empresa"
-            ),
-            "Usuário": st.column_config.SelectboxColumn(
-                options=vendedores,
-                help="Selecione o vendedor"
-            )
-        }
-    )
+    # Reordena as colunas colocando "Editar" como a primeira
+    cols = ["Editar"] + [col for col in df_final.columns if col != "Editar"]
+    df_final = df_final[cols]
 
-    if st.button("💾 Salvar alterações"):
-        for index, row in edited_df.iterrows():
-            # Atualiza o contato na coleção de contatos identificando-o pelo e-mail
+    # retira do DF as colunas Usuário, 
+
+    with st.form("form_edicao_contatos"):
+        # Exibe editor com coluna configurada para Empresa, Usuário e flag de edição
+        edited_df = st.data_editor(
+            df_final,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Empresa": st.column_config.SelectboxColumn(
+                    options=company_list,
+                    help="Selecione a empresa"
+                ),
+                "Editar": st.column_config.CheckboxColumn(
+                    help="Marque para prosseguir com a edição"
+                )
+            }
+        )
+
+        submit = st.form_submit_button("💾 Salvar alterações")
+
+    if submit:
+        # Verifica se existe a coluna de flag "Editar" e filtra apenas os registros marcados
+        if "Editar" in edited_df.columns:
+            edited_rows = edited_df[edited_df["Editar"] == True]
+        else:
+            st.warning("Nenhuma linha marcada para edição.")
+            edited_rows = pd.DataFrame()
+
+        for index, row in edited_rows.iterrows():
+            # Busca o registro da empresa para identificar o empresa_id com base no _id
+            empresa_info = collection_empresas.find_one({"razao_social": row["Empresa"]})
+            empresa_id_valor = empresa_info["_id"] if empresa_info else None
+
+            # Atualiza o contato na coleção identificando-o pelo e-mail
             collection_contatos.update_one(
                 {"email": row["E-mail"]},
                 {"$set": {
@@ -253,15 +274,18 @@ def exibir_todos_contatos_empresa():
                     "cargo": row["Cargo"],
                     "fone": row["Telefone"],
                     "email": row["E-mail"],
-                    "empresa": row["Empresa"]
+                    "empresa": row["Empresa"],
+                    "empresa_id": empresa_id_valor
                 }}
             )
             # Atualiza o proprietário (Usuário) e a última atividade na empresa associada
             collection_empresas.update_one(
                 {"razao_social": row["Empresa"]},
                 {"$set": {
-                    "proprietario": row["Usuário"],
                     "ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")
                 }}
             )
-        st.success("Alterações salvas com sucesso!")
+        if not edited_rows.empty:
+            st.success("Alterações salvas com sucesso!")
+        else:
+            st.info("Nenhuma alteração marcada para salvar.")

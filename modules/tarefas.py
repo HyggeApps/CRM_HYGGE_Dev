@@ -557,6 +557,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                     hide_index=True,
                     key=f"atrasadas_{titulo}",
                     use_container_width=True,
+                    height=200,  # Altura máxima reduzida para 300 pixels
                     column_config=column_config
                 )
 
@@ -677,6 +678,7 @@ def gerenciamento_tarefas_por_usuario(user, admin):
                     hide_index=True,
                     key=f"andamento_{titulo}",
                     use_container_width=True,
+                    height=200,  # Altura máxima reduzida para 300 pixels
                     column_config=column_config
                 )
 

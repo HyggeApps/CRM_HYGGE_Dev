@@ -106,7 +106,7 @@ def slickgrid_empresa(empresas, contatos_map):
             "filterable": True,
             "filter": {
                 "model": Filters.singleSelect,
-                "collection": unique_vendedores,
+                "collection": [""] + unique_vendedores,
             },
         },
         {

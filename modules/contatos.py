@@ -148,6 +148,7 @@ def exibir_contatos_empresa(user, admin, empresa_id):
 def exibir_todos_contatos_empresa():
     collection_contatos = get_collection("contatos")
     collection_empresas = get_collection("empresas")
+    collection_usuarios = get_collection("usuarios")
 
     # Busca os dados das coleções em paralelo
     with ThreadPoolExecutor(max_workers=2) as executor:
@@ -168,12 +169,12 @@ def exibir_todos_contatos_empresa():
     else:
         df_contatos["empresa"] = df_contatos["empresa"].fillna("Sem Empresa")
 
-    df_empresas.rename(columns={"razao_social": "Empresa"}, inplace=True)
+    df_empresas.rename(columns={"razao_social": "Empresa", "proprietario": "Usuário"}, inplace=True)
     df_contatos["empresa_lower"] = df_contatos["empresa"].str.lower()
     df_empresas["Empresa_lower"] = df_empresas["Empresa"].str.lower()
 
     df_merged = df_contatos.merge(
-        df_empresas[["Empresa_lower", "proprietario", "ultima_atividade"]],
+        df_empresas[["Empresa_lower", "Usuário", "ultima_atividade"]],
         left_on="empresa_lower",
         right_on="Empresa_lower",
         how="left"
@@ -185,9 +186,8 @@ def exibir_todos_contatos_empresa():
         "cargo": "Cargo",
         "email": "E-mail",
         "fone": "Telefone",
-        "ultima_atividade": 'Última atividade',
-        "proprietario": 'Usuário',
-        "empresa": 'Empresa'
+        "ultima_atividade": "Última atividade",
+        "empresa": "Empresa"
     })
 
     col_order = ["Nome", "Sobrenome", "Empresa", "Usuário", "Última atividade", "Cargo", "E-mail", "Telefone"]
@@ -212,4 +212,56 @@ def exibir_todos_contatos_empresa():
     if "busca_concat" in df_final.columns:
         df_final.drop(columns=["busca_concat"], inplace=True)
 
-    st.data_editor(df_final, hide_index=True, use_container_width=True)
+    # Prepara lista de empresas para o dropdown
+    companies_docs = list(collection_empresas.find({}, {"razao_social": 1, "_id": 0}))
+    company_list = [c["Empresa"] if "Empresa" in c else c["razao_social"] for c in companies_docs]
+    if not company_list:
+        company_list = ["Sem Empresa"]
+
+    # Prepara lista de vendedores disponíveis para o dropdown
+    vendedores_docs = list(collection_usuarios.find({"role": "vendedor"}, {"nome": 1, "sobrenome": 1, "_id": 0}))
+    st.write(vendedores_docs)
+    vendedores = [v["nome"] + " " + v["sobrenome"] for v in vendedores_docs]
+    if not vendedores:
+        vendedores = [""]
+
+    # Exibe editor com coluna configurada como selectbox para Empresa e Usuário
+    edited_df = st.data_editor(
+        df_final,
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "Empresa": st.column_config.SelectboxColumn(
+                options=company_list,
+                help="Selecione a empresa"
+            ),
+            "Usuário": st.column_config.SelectboxColumn(
+                options=vendedores,
+                help="Selecione o vendedor"
+            )
+        }
+    )
+
+    if st.button("💾 Salvar alterações"):
+        for index, row in edited_df.iterrows():
+            # Atualiza o contato na coleção de contatos identificando-o pelo e-mail
+            collection_contatos.update_one(
+                {"email": row["E-mail"]},
+                {"$set": {
+                    "nome": row["Nome"],
+                    "sobrenome": row["Sobrenome"],
+                    "cargo": row["Cargo"],
+                    "fone": row["Telefone"],
+                    "email": row["E-mail"],
+                    "empresa": row["Empresa"]
+                }}
+            )
+            # Atualiza o proprietário (Usuário) e a última atividade na empresa associada
+            collection_empresas.update_one(
+                {"razao_social": row["Empresa"]},
+                {"$set": {
+                    "proprietario": row["Usuário"],
+                    "ultima_atividade": datetime.datetime.now().strftime("%Y-%m-%d")
+                }}
+            )
+        st.success("Alterações salvas com sucesso!")

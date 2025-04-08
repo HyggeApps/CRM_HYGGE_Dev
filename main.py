@@ -83,10 +83,9 @@ if not st.experimental_user.is_logged_in:
         st.login("microsoft")
 
 # Bloco executado para o usuário logado
-if st.experimental_user.is_logged_in:
+if st.experimental_user.is_logged_in and "@hygge.eco.br" in st.experimental_user.email:
     email_logado = st.experimental_user.email
-    permission_admin = ('@hygge.eco.br' in email_logado and 'comercial' not in email_logado) or ('matheus' in email_logado)
-    
+    permission_admin = 'fabricio' in email_logado or 'alexandre' in email_logado or 'admin' in email_logado
     with st.sidebar:
         if permission_admin: 
             st.info(f'Bem-vindo(a), **{st.experimental_user.name}**!')
@@ -108,8 +107,8 @@ if st.experimental_user.is_logged_in:
             st.info('Este é o ambiente de **vendedor** para consulta, preenchimento, controle e envio das informações referentes as oportunidades da HYGGE.')
             selected = option_menu(
                 "CRM HYGGE (Vendedor)",
-                ["Home", "Negócios", "Controle de orçamentos", "Templates", "Produtos", "Usuários", "Solicitações", "Indicadores"],
-                icons=["house", "currency-dollar", "calculator-fill", "file-earmark-text", "archive", "person-add", "check2-square","speedometer"],
+                ["Home", "Negócios", "Contatos", "Indicadores"],
+                icons=["house", "currency-dollar", "person-lines-fill","speedometer"],
                 menu_icon="cast",
                 default_index=0,
                 styles={
@@ -121,7 +120,7 @@ if st.experimental_user.is_logged_in:
         if st.button("Logout", use_container_width=True):
             st.logout()
 
-if st.experimental_user.is_logged_in:
+if st.experimental_user.is_logged_in and "@hygge.eco.br" in st.experimental_user.email:
     usuario_ativo = st.experimental_user.name
     # Obter informações da empresa com razao_social "Teste"
     collection_empresas = db.get_collection("empresas")
@@ -249,3 +248,9 @@ if st.experimental_user.is_logged_in:
             aprovacoes_lib.gerenciamento_aprovacoes()
         else:
             st.warning("Você não tem permissão para aprovar solicitações.")
+    
+    elif selected == 'Contatos':
+        st.header("👥 Contatos")
+        st.write('----')
+        contatos_admin = permission_admin
+        contatos_lib.exibir_todos_contatos_empresa()

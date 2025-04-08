@@ -133,11 +133,12 @@ def elaborar_orcamento(user, email, senha, admin):
     selected_empresa = st.selectbox("**Selecione a Empresa:**", opcoes_empresas, key="orcamento_empresa")
     # Extrair o nome da empresa (razao_social) a partir da string
     empresa_nome = selected_empresa
+    empresa_id = collection_empresas.find_one({"razao_social": empresa_nome})["_id"]
 
     # 2. Seleção do Negócio (Oportunidade) vinculado à empresa selecionada
     oportunidades = list(
         collection_oportunidades.find(
-            {"cliente": empresa_nome},
+            {"empresa_id": empresa_id},
             {"_id": 1, "cliente": 1, "nome_oportunidade": 1, "proprietario": 1, "produtos": 1, "valor_estimado": 1,"valor_orcamento": 1, "data_criacao": 1, "data_fechamento": 1, "estagio": 1, 'aprovacao_gestor': 1, 'solicitacao_desconto': 1, 'desconto_solicitado': 1, 'desconto_aprovado': 1, 'contatos_selecionados': 1, 'contato_principal': 1, 'condicoes_pagamento': 1, 'prazo_execucao': 1, 'categoria': 1, 'tipo': 1, 'tamanho': 1}
         )
     )

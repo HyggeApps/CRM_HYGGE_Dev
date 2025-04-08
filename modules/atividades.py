@@ -109,7 +109,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                     prazo = st.selectbox("Prazo", ["1 dia útil", "2 dias úteis", "3 dias úteis", 
                                                     "1 semana", "2 semanas", "1 mês", "2 meses", "3 meses"], index=3)
                     data_execucao_tarefa = st.date_input("Data de Execução", value=calcular_data_execucao(prazo)) if prazo == "Personalizada" else calcular_data_execucao(prazo)
-                    
+                    prioridade = st.selectbox("Prioridade", ["Baixa", "Média", "Alta"])
                 submit_atividade = st.form_submit_button("✅ Adicionar Atividade")
                 
                 if submit_atividade:
@@ -142,6 +142,7 @@ def exibir_atividades_empresa(user, admin, empresa_id):
                                 "data_execucao": data_execucao_tarefa.strftime("%Y-%m-%d"),
                                 "status": "🟨 Em andamento",
                                 "observacoes": "",
+                                "Prioridade": prioridade,
                                 "empresa_id": empresa_id,
                             }
                             collection_tarefas = get_collection("tarefas")

@@ -133,10 +133,10 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                             value=empresa_obj.get("cep", ""), 
                             disabled=not editable, 
                             key="empresa_cep")
-        data_ultima_atividade = st.text_input("Data da Última Atividade",
-                                              value=empresa_obj.get("ultima_atividade", ""), 
-                                              disabled=True, 
-                                              key="empresa_ultima_atividade")
+        telefone_fixo = st.text_input("Telefone Fixo",
+                                      value=empresa_obj.get("telefone_fixo", ""), 
+                                      disabled=not editable, 
+                                      key="empresa_telefone_fixo")
 
     if editable:
         if st.button("Salvar alterações", key="empresa_salvar_alteracoes"):
@@ -156,7 +156,8 @@ def infos_empresa(empresa_obj, collection_empresas, collection_usuarios, user, a
                 "endereco": endereco,
                 "cnpj": cnpj,
                 "cep": cep,
-                "empresa_ativa": atividade_empresa
+                "empresa_ativa": atividade_empresa,
+                "telefone_fixo": telefone_fixo
             }
             result = collection_empresas.update_one({"_id": empresa_obj["_id"]}, {"$set": updated_data})
             if result.modified_count:

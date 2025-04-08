@@ -17,6 +17,7 @@ from modules import (
     negocios as negocios_lib,
     orcamentos as orcamentos_lib,
     aprovacoes as aprovacoes_lib,
+    atividades as atividades_lib,
 )
 import modules.css_adicionais as css_adicionais
 import modules.slickgrids as sl
@@ -181,7 +182,9 @@ if st.experimental_user.is_logged_in and "@hygge.eco.br" in st.experimental_user
                     st.info("Consulte e edite as tarefas e atividades da empresa (caso seja proprietário ou admin) nos campos abaixo.")
                     st.write('----')
                     tarefas_lib.gerenciamento_tarefas(usuario_ativo, empresa_id, admin=permission_admin)
-
+                    st.write('----')
+                    atividades_lib.exibir_atividades_empresa(usuario_ativo, admin=permission_admin, empresa_id=empresa_id)
+                    st.write('----')
                 with tabs[3]:
                     st.header("💰 Negócios da empresa")
                     st.info("Consulte e edite os negócios da empresa (caso seja proprietário ou admin) nos campos abaixo.")

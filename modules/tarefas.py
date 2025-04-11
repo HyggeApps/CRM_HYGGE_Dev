@@ -102,6 +102,7 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                     hoje = datetime.today().date()
                     status = "🟨 Em andamento"
                     observacoes = st.text_area("Observações da Tarefa")
+                    prioridade = st.selectbox("Prioridade", ["Baixa", "Média", "Alta"], index=1)
 
                     submit_criar = st.form_submit_button("✅ Criar Tarefa")
 
@@ -115,7 +116,8 @@ def gerenciamento_tarefas(user, empresa_id, admin):
                             "observacoes": observacoes,
                             "status": status,
                             "hexa": random_hex,
-                            "empresa_id": empresa_id,
+                            "Prioridade": prioridade,
+                            "empresa_id": empresa_id
                         }
                         collection_tarefas.insert_one(nova_tarefa)
                         

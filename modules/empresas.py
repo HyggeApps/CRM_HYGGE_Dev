@@ -257,7 +257,7 @@ def cadastrar_empresas(user, admin):
         submit = st.form_submit_button("✅ Cadastrar")
 
         if submit:
-            if not razao_social or not cnpj or not cidade or not estado or not setor or not produto_interesse or not tamanho_empresa:
+            if not razao_social or not cidade or not estado or not setor or not produto_interesse or not tamanho_empresa:
                 st.error("Preencha todos os campos obrigatórios!")
             else:
                 existing_company = collection_empresas.find_one({"razao_social": razao_social})
@@ -293,7 +293,9 @@ def cadastrar_empresas(user, admin):
                         "empresa": razao_social,
                         "data_execucao": prazo_execucao.strftime("%Y-%m-%d"),
                         "observacoes": "Nova empresa cadastrada",
-                        "status": "🟨 Em andamento"
+                        "status": "🟨 Em andamento",
+                        "empresa_id": document["_id"],
+                        "Prioridade": "Média",
                     }
                     collection_tarefas.insert_one(tarefa_document)
                     st.success("Empresa cadastrada com sucesso e tarefa inicial criada!")

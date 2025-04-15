@@ -1285,8 +1285,8 @@ def gerar_orcamento(empresa_id, collection_oportunidades, collection_empresas, c
                     senha = st.text_input("Digite sua senha para enviar o orçamento: *", type="password")
 
                     if st.button('Enviar orçamento para o cliente'):
-                        #receivers = selected_contatos + [email,'fabricio@hygge.eco.br','alexandre@hygge.eco.br','rodrigo@hygge.eco.br','paula@hygge.eco.br']
-                        receivers = [email]
+                        receivers = selected_contatos + [email,'fabricio@hygge.eco.br','alexandre@hygge.eco.br','rodrigo@hygge.eco.br','paula@hygge.eco.br']
+                        #receivers = [email]
                         message = MIMEMultipart()
                         message["From"] = email
                         message["To"] = ", ".join(receivers)

@@ -53,6 +53,11 @@ def slickgrid_empresa(empresas, contatos_map):
 
     data = dataset
 
+    # Cria lista única de vendedores a partir da coleção empresas para o select-box do filtro
+    unique_vendedores = sorted(list(set(
+        empresa.get("proprietario", "") for empresa in empresas if empresa.get("proprietario", "")
+    )))
+
     columns = [
         {
             "id": "title",
@@ -81,7 +86,7 @@ def slickgrid_empresa(empresas, contatos_map):
             "params": {
                 "colors": [
                     # [maxValue, foreground, background]
-                    [10, green, None],  # None is the same as leaving out
+                    [10, green, None],  # None equivale a deixar sem alteração
                     [30, yellow],
                     [90, orange],
                     [1000, red]
@@ -99,6 +104,10 @@ def slickgrid_empresa(empresas, contatos_map):
             "minWidth": 50,
             "type": FieldType.string,
             "filterable": True,
+            "filter": {
+                "model": Filters.singleSelect,
+                "collection": [""] + unique_vendedores,
+            },
         },
         {
             "id": "contatos",
@@ -111,7 +120,6 @@ def slickgrid_empresa(empresas, contatos_map):
             "formatter": Formatters.tree,
             "exportCustomFormatter": Formatters.treeExport,
         },
-
     ]
 
     options = {
